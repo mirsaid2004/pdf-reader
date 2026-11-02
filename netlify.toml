@@ -1,0 +1,8 @@
+# Netlify auto-detects Next.js and applies its Next.js runtime (OpenNext adapter).
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "24"
+  NEXT_TELEMETRY_DISABLED = "1"
