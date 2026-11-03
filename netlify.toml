@@ -6,3 +6,9 @@
 [build.environment]
   NODE_VERSION = "24"
   NEXT_TELEMETRY_DISABLED = "1"
+  # Netlify's secrets scan flags any env var *value* found in the build output.
+  # The R2 bucket name ("mdev-reader") is a substring of the public site URL
+  # (NEXT_PUBLIC_APP_URL = https://mdev-reader.netlify.app), which Next inlines
+  # into the server bundle, so the scan reports it as a leak. It is not a
+  # secret (access needs the R2 keys), so exclude only this key.
+  SECRETS_SCAN_OMIT_KEYS = "R2_BUCKET_NAME"
