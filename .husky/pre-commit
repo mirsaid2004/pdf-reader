@@ -1,0 +1,4 @@
+echo "Running pre-commit hooks!"
+
+# Check formatting
+npm run format && npm run lint
