@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import type { ReaderBook } from "@/entities/book";
 import { getBookReadUrl } from "@/features/read-book";
@@ -25,6 +25,9 @@ export function PdfReader({ book, initialUrl, initialPage }: PdfReaderProps) {
     initialUrl,
     fetchFreshUrl,
   });
+  // The reader view is rebuilt when the route is hidden and shown again (see
+  // usePdfDocument), so remember where the reader was.
+  const [resumePage, setResumePage] = useState(initialPage);
   // A failed page render usually means the signed URL expired; fetch a new one.
   const onRenderError = useCallback(() => void refreshUrl(), [refreshUrl]);
 
@@ -34,7 +37,8 @@ export function PdfReader({ book, initialUrl, initialPage }: PdfReaderProps) {
         book={book}
         doc={state.doc}
         firstPage={state.firstPage}
-        initialPage={initialPage}
+        initialPage={resumePage}
+        onPageChange={setResumePage}
         onRenderError={onRenderError}
       />
     );

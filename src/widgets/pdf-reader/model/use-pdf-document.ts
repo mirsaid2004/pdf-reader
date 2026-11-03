@@ -83,10 +83,16 @@ export function usePdfDocument(params: {
     };
   }, [source]);
 
+  // Release the document when the reader unmounts *or is hidden*. With Cache
+  // Components, navigating away keeps a route's state alive but runs effect
+  // cleanups; the state must never keep pointing at a destroyed document, or
+  // coming back renders pages against it ("reading 'sendWithPromise'" of null).
+  // Showing the route again re-runs the load effect above.
   useEffect(
     () => () => {
       void currentTask.current?.destroy();
       currentTask.current = null;
+      setState({ status: "loading" });
     },
     [],
   );

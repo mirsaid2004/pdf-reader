@@ -49,6 +49,7 @@ type ReaderViewProps = {
   doc: PDFDocumentProxy;
   firstPage: PageSize;
   initialPage: number;
+  onPageChange: (page: number) => void;
   onRenderError: () => void;
 };
 
@@ -57,6 +58,7 @@ export function ReaderView({
   doc,
   firstPage,
   initialPage,
+  onPageChange,
   onRenderError,
 }: ReaderViewProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -108,15 +110,17 @@ export function ReaderView({
   );
   const { current: currentPage } = view;
 
-  // Keep ?page=N in the URL so a refresh stays put (saving to the DB is Phase 5).
+  // Keep ?page=N in the URL so a refresh stays put, and tell the parent so a
+  // hidden-then-shown route resumes here (saving to the DB is Phase 5).
   useEffect(() => {
     const id = setTimeout(() => {
       const url = new URL(window.location.href);
       url.searchParams.set("page", String(currentPage));
       window.history.replaceState(window.history.state, "", url);
+      onPageChange(currentPage);
     }, 400);
     return () => clearTimeout(id);
-  }, [currentPage]);
+  }, [currentPage, onPageChange]);
 
   // ── fullscreen + toolbar visibility ──
   const fullscreen = useFullscreen(rootRef);

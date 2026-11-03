@@ -35,6 +35,7 @@ There is no test runner yet; Playwright E2E arrives in Phase 8.
 
 - **`proxy.ts`** (root) replaces `middleware.ts`. Runs on Node by default.
 - **`cacheComponents: true`**: any component reading cookies/headers/searchParams/session must be inside `<Suspense>`, or the build fails. Don't await the session at the top level of a layout. Pages take `searchParams` as a Promise and pass it into a suspended child.
+- **Hidden routes keep their state but lose their effects.** With `cacheComponents`, navigating away doesn't unmount a route: React hides it, preserving component state, but runs every effect **cleanup**; coming back re-runs the effects against the _old_ state. Any resource created in an effect and stored in state (e.g. the pdf.js document) must not stay in state after its cleanup destroys it. Reset it in the cleanup, and re-create it when the effect re-runs (see `usePdfDocument`). Test client features by navigating away and back, not just by loading once.
 - Auth.js calls `crypto.getRandomValues()` internally, so `getCurrentUser()` calls `await connection()` before `auth()`. Keep that ordering for any new request-time code that uses randomness.
 
 ## Architecture
