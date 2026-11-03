@@ -9,13 +9,15 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import type { ReaderBook } from "@/entities/book";
+import type { OutlineItem, ReaderBook } from "@/entities/book";
+import { useBookSearch } from "@/features/search-book";
 import { useReadingTracker } from "@/features/track-reading";
 import { useStoredState } from "@/shared/lib/use-stored-state";
 
 import { isReaderTheme, THEME_STYLES, type ReaderTheme } from "../model/themes";
 import { useElementSize } from "../model/use-element-size";
 import { useFullscreen } from "../model/use-fullscreen";
+import { useMediaQuery } from "../model/use-media-query";
 import { useReaderKeys } from "../model/use-reader-keys";
 import {
   PAD_X,
@@ -23,6 +25,7 @@ import {
   type PageSize,
 } from "../model/use-virtual-pages";
 import { PageView } from "./page-view";
+import { ReaderSidebar, type SidebarTab } from "./reader-sidebar";
 import { Toolbar } from "./toolbar";
 
 /** pdf.js "100%" = 96 CSS px per inch over 72 points per inch. */
@@ -47,6 +50,7 @@ const subscribeCoarse = (onChange: () => void) => {
 
 type ReaderViewProps = {
   book: ReaderBook;
+  outline: OutlineItem[] | null;
   doc: PDFDocumentProxy;
   firstPage: PageSize;
   initialPage: number;
@@ -56,6 +60,7 @@ type ReaderViewProps = {
 
 export function ReaderView({
   book,
+  outline,
   doc,
   firstPage,
   initialPage,
@@ -112,6 +117,55 @@ export function ReaderView({
   const { current: currentPage } = view;
 
   useReadingTracker({ bookId: book.id, initialPage, currentPage });
+
+  // ── sidebar: Contents / Search ──
+  // Wide screens dock it beside the page (remembered per device); narrow ones
+  // show an overlay drawer that starts closed.
+  const docked = useMediaQuery("(min-width: 1024px)");
+  const [storedSidebar, setStoredSidebar] = useStoredState(
+    "reader:sidebar",
+    "closed",
+  );
+  const [overlayTab, setOverlayTab] = useState<SidebarTab | null>(null);
+  const [searchFocusSignal, setSearchFocusSignal] = useState(0);
+  const storedTab: SidebarTab | null =
+    storedSidebar === "contents" || storedSidebar === "search"
+      ? storedSidebar
+      : null;
+  const sidebarTab = docked ? storedTab : overlayTab;
+
+  const openSidebar = useCallback(
+    (tab: SidebarTab) => {
+      if (docked) setStoredSidebar(tab);
+      else setOverlayTab(tab);
+      if (tab === "search") setSearchFocusSignal((signal) => signal + 1);
+    },
+    [docked, setStoredSidebar],
+  );
+  const closeSidebar = useCallback(() => {
+    if (docked) setStoredSidebar("closed");
+    else setOverlayTab(null);
+  }, [docked, setStoredSidebar]);
+  const toggleSidebar = (tab: SidebarTab) =>
+    sidebarTab === tab ? closeSidebar() : openSidebar(tab);
+
+  // On narrow screens the drawer covers the page, so close it after jumping.
+  const goToPageFromSidebar = useCallback(
+    (page: number) => {
+      goToPage(page);
+      if (!docked) setOverlayTab(null);
+    },
+    [goToPage, docked],
+  );
+
+  const search = useBookSearch({
+    bookId: book.id,
+    doc,
+    pageCount: book.pageCount,
+    currentPage,
+    enabled: book.hasTextLayer,
+    onGoToPage: goToPageFromSidebar,
+  });
 
   // Keep ?page=N in the URL so a refresh stays put, and tell the parent so a
   // hidden-then-shown route resumes here (saving to the DB is Phase 5).
@@ -177,6 +231,11 @@ export function ReaderView({
     zoomIn: () => stepZoom(1),
     zoomOut: () => stepZoom(-1),
     toggleFullscreen: fullscreen.toggle,
+    openSearch: () => openSidebar("search"),
+    toggleContents: () => toggleSidebar("contents"),
+    closeSidebar: () => {
+      if (sidebarTab) closeSidebar();
+    },
   });
 
   useEffect(() => {
@@ -293,6 +352,13 @@ export function ReaderView({
           canvasFilter={themeStyle.canvasFilter}
           onSize={reportSize}
           onRenderError={onRenderError}
+          highlightQuery={search.highlight?.query ?? ""}
+          activeOrdinal={
+            search.highlight?.activePage === i + 1
+              ? search.highlight.activeOrdinal
+              : null
+          }
+          focusToken={search.highlight?.focusToken ?? 0}
         />,
       );
     }
@@ -323,25 +389,44 @@ export function ReaderView({
         isFullscreen={fullscreen.active}
         onToggleFullscreen={fullscreen.toggle}
         onInteract={showToolbar}
+        sidebarTab={sidebarTab}
+        onToggleContents={() => toggleSidebar("contents")}
+        onToggleSearch={() => toggleSidebar("search")}
       />
-      <div
-        ref={setScroller}
-        tabIndex={0}
-        role="document"
-        aria-label={`${book.title}, ${book.pageCount} pages`}
-        // pan-x/pan-y hands pinch gestures to us instead of zooming the whole page.
-        style={{ touchAction: "pan-x pan-y" }}
-        className="absolute inset-0 overflow-auto overscroll-contain outline-none"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={(event) => endPointer(event, false)}
-        onPointerCancel={(event) => endPointer(event, true)}
-      >
+      <div className="absolute inset-0 flex">
+        {sidebarTab && (
+          <ReaderSidebar
+            tab={sidebarTab}
+            onTabChange={openSidebar}
+            onClose={closeSidebar}
+            docked={docked}
+            outline={outline}
+            currentPage={currentPage}
+            onGoToPage={goToPageFromSidebar}
+            hasTextLayer={book.hasTextLayer}
+            search={search}
+            searchFocusSignal={searchFocusSignal}
+          />
+        )}
         <div
-          className="relative"
-          style={{ width: layout.contentWidth, height: layout.totalHeight }}
+          ref={setScroller}
+          tabIndex={0}
+          role="document"
+          aria-label={`${book.title}, ${book.pageCount} pages`}
+          // pan-x/pan-y hands pinch gestures to us instead of zooming the whole page.
+          style={{ touchAction: "pan-x pan-y" }}
+          className="relative h-full min-w-0 flex-1 overflow-auto overscroll-contain outline-none"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={(event) => endPointer(event, false)}
+          onPointerCancel={(event) => endPointer(event, true)}
         >
-          {pages}
+          <div
+            className="relative"
+            style={{ width: layout.contentWidth, height: layout.totalHeight }}
+          >
+            {pages}
+          </div>
         </div>
       </div>
     </div>

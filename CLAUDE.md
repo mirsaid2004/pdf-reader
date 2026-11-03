@@ -92,6 +92,14 @@ npm run r2:check       # verifies R2 creds, presigned PUT/GET, Range, and bucket
 - Auto-shelving on the server (`save-report.ts`): first read past page 1 ⇒ Reading (unless already Finished); reaching the last page ⇒ Finished; both only on _transitions_. Shared exclusive-status-shelf logic lives in `entities/shelf/api/membership.ts`.
 - Resume order in `pages/reader`: explicit `?page=N` > saved progress > page 1. After a save the route calls `revalidatePath("/library")` so progress bars update.
 
+### Contents & in-book search (`features/table-of-contents`, `features/search-book`, `widgets/pdf-reader/ui/reader-sidebar.tsx`)
+
+- The sidebar (Contents | Search tabs; Phase 7 adds Bookmarks | Highlights) is **docked** beside the page at ≥ 1024 px (state persisted in `reader:sidebar`; the page re-fits and the scroll anchor keeps your place) and an **overlay drawer** below that (not persisted; closes after a jump). Both panels stay mounted (`hidden`) so scroll/expanded/search state survive tab switches.
+- Outline comes from `books.outline` (extracted at upload) via `getReaderBook` → `PdfReader` → `TocPanel`. Pure helpers in `table-of-contents/lib/outline.ts` (flatten, current section = greatest page ≤ current, deeper wins ties).
+- Search: page text is read **lazily on first use** with `getTextContent()` (nearest pages first, cancellable/resumable), cached per book in IndexedDB (`index-store.ts`, raw API via `shared/lib/idb.ts`, LRU of 30 books, `INDEX_VERSION` to invalidate), searched in memory by `BookTextIndex` (plain TS, unit-tested). Text is **folded** (case, accents, ligatures via NFKD, whitespace collapsed) with `lib/fold.ts`; `foldPlain` and `foldWithMap` must stay identical (tested). Indexed text is built like the text layer: item strings concatenated + `"\n"` after `hasEOL` (pdf.js puts a `<br>` after such a span) — keep both sides in sync or hit numbers drift.
+- Hits on the page: `computeSearchRects` rebuilds the page string from `textLayer.textDivs`/`textContentItemsStr`, finds matches, builds one DOM `Range` per span and converts to **rects normalized to page size** (`shared/lib/text-rects.ts`, reused for Phase 7 highlights). `PageView` draws them as a percent-positioned overlay _below_ the text layer; zoom needs no recomputation. Active hit scrolls into view once per `focusToken`.
+- Reader keys: `t` Contents, `/` or Cmd/Ctrl+F Search (browser find is intentionally overridden: it only sees mounted pages), Esc closes the sidebar. Books with `has_text_layer = false` show a notice and no search box.
+
 ### Server actions
 
 - Return `ActionResult<T>` (`shared/lib/action-result.ts`) instead of throwing: thrown errors are redacted in production. Validate input with zod (`unknown` in, `safeParse`). Use `getCurrentUser()` (not `requireUser()`, which redirects). Call `refresh()` from `next/cache` after mutations that change the current page.

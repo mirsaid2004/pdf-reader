@@ -3,7 +3,9 @@
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
 import { memo, useEffect, useRef, useState } from "react";
 
+import { computeSearchRects } from "@/features/search-book";
 import { loadPdfjs } from "@/shared/lib/pdfjs";
+import type { NormalizedRect } from "@/shared/lib/text-rects";
 
 import type { PageSize } from "../model/use-virtual-pages";
 
@@ -27,7 +29,15 @@ type PageViewProps = {
   canvasFilter: string;
   onSize: (page: number, size: PageSize) => void;
   onRenderError: () => void;
+  /** Folded search query to highlight on this page ("" for none). */
+  highlightQuery: string;
+  /** Which hit on this page is the active one, if any. */
+  activeOrdinal: number | null;
+  /** Changes on each navigation so the active hit is scrolled to again. */
+  focusToken: number;
 };
+
+const NO_HITS: NormalizedRect[][] = [];
 
 const isCancelled = (error: unknown) =>
   error instanceof Error && error.name === "RenderingCancelledException";
@@ -43,9 +53,21 @@ export const PageView = memo(function PageView({
   canvasFilter,
   onSize,
   onRenderError,
+  highlightQuery: query,
+  activeOrdinal,
+  focusToken,
 }: PageViewProps) {
   const canvasHost = useRef<HTMLDivElement>(null);
   const textHost = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  // The rendered text layer's spans, used to locate search hits.
+  const layerRef = useRef<{
+    divs: readonly HTMLElement[];
+    strings: readonly string[];
+  } | null>(null);
+  const [layerVersion, setLayerVersion] = useState(0);
+  const [hits, setHits] = useState<NormalizedRect[][]>(NO_HITS);
+  const handledFocus = useRef<number | null>(null);
   const [page, setPage] = useState<PDFPageProxy | null>(null);
 
   // 1. Get the page and report its real size (corrects the layout estimate).
@@ -122,6 +144,11 @@ export const PageView = memo(function PageView({
         await layer.render();
         if (cancelled) return;
         textHost.current?.replaceChildren(container);
+        layerRef.current = {
+          divs: layer.textDivs,
+          strings: layer.textContentItemsStr,
+        };
+        setLayerVersion((version) => version + 1);
       } catch (error) {
         if (
           !cancelled &&
@@ -141,8 +168,44 @@ export const PageView = memo(function PageView({
     };
   }, [page, cssScale, onRenderError]);
 
+  // 3. Search hits on this page: measured against the text layer, stored as
+  //    fractions of the page size, so zooming needs no recalculation.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const layer = layerRef.current;
+      const pageElement = pageRef.current;
+      if (!query || !layer || !pageElement) {
+        setHits((previous) => (previous.length === 0 ? previous : NO_HITS));
+        return;
+      }
+      setHits(
+        computeSearchRects({
+          divs: layer.divs,
+          strings: layer.strings,
+          foldedQuery: query,
+          pageElement,
+        }),
+      );
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [query, layerVersion]);
+
+  // 4. Bring the active hit into view (once per navigation).
+  const activeGroup =
+    activeOrdinal === null ? -1 : Math.min(activeOrdinal, hits.length - 1);
+  useEffect(() => {
+    if (activeGroup < 0 || handledFocus.current === focusToken) return;
+    const target = pageRef.current?.querySelector<HTMLElement>(
+      '[data-active-hit="true"]',
+    );
+    if (!target) return;
+    handledFocus.current = focusToken;
+    target.scrollIntoView({ block: "center", inline: "nearest" });
+  }, [activeGroup, focusToken, hits]);
+
   return (
     <div
+      ref={pageRef}
       className="pdf-page absolute shadow-md"
       aria-label={`Page ${pageNumber}`}
       style={
@@ -161,6 +224,33 @@ export const PageView = memo(function PageView({
         className="absolute inset-0 bg-white"
         style={{ filter: canvasFilter === "none" ? undefined : canvasFilter }}
       />
+      {hits.length > 0 && (
+        <div className="pointer-events-none absolute inset-0" aria-hidden>
+          {hits.map((group, groupIndex) =>
+            group.map((rect, rectIndex) => (
+              <div
+                key={`${groupIndex}-${rectIndex}`}
+                data-active-hit={
+                  groupIndex === activeGroup && rectIndex === 0
+                    ? "true"
+                    : undefined
+                }
+                className={
+                  groupIndex === activeGroup
+                    ? "absolute rounded-[2px] bg-orange-400/60 ring-1 ring-orange-600/70"
+                    : "absolute rounded-[2px] bg-yellow-300/50"
+                }
+                style={{
+                  left: `${rect.x * 100}%`,
+                  top: `${rect.y * 100}%`,
+                  width: `${rect.w * 100}%`,
+                  height: `${rect.h * 100}%`,
+                }}
+              />
+            )),
+          )}
+        </div>
+      )}
       <div ref={textHost} className="absolute inset-0" />
     </div>
   );

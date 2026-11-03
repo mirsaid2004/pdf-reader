@@ -46,7 +46,12 @@ async function ReaderContent({
     (savedPage ? Math.min(Math.max(savedPage, 1), pageCount) : 1);
 
   return (
-    <PdfReader book={result.book} initialUrl={url} initialPage={initialPage} />
+    <PdfReader
+      book={result.book}
+      outline={result.outline}
+      initialUrl={url}
+      initialPage={initialPage}
+    />
   );
 }
 

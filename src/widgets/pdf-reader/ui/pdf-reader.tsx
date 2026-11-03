@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 
-import type { ReaderBook } from "@/entities/book";
+import type { OutlineItem, ReaderBook } from "@/entities/book";
 import { getBookReadUrl } from "@/features/read-book";
 
 import { usePdfDocument } from "../model/use-pdf-document";
@@ -11,11 +11,17 @@ import { ReaderView } from "./reader-view";
 
 type PdfReaderProps = {
   book: ReaderBook;
+  outline: OutlineItem[] | null;
   initialUrl: string;
   initialPage: number;
 };
 
-export function PdfReader({ book, initialUrl, initialPage }: PdfReaderProps) {
+export function PdfReader({
+  book,
+  outline,
+  initialUrl,
+  initialPage,
+}: PdfReaderProps) {
   const fetchFreshUrl = useCallback(async () => {
     const result = await getBookReadUrl(book.id);
     return result.ok ? result.data.url : null;
@@ -35,6 +41,7 @@ export function PdfReader({ book, initialUrl, initialPage }: PdfReaderProps) {
     return (
       <ReaderView
         book={book}
+        outline={outline}
         doc={state.doc}
         firstPage={state.firstPage}
         initialPage={resumePage}

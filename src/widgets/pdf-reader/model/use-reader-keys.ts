@@ -10,6 +10,9 @@ export type ReaderKeyActions = {
   zoomIn: () => void;
   zoomOut: () => void;
   toggleFullscreen: () => void;
+  openSearch: () => void;
+  toggleContents: () => void;
+  closeSidebar: () => void;
 };
 
 const isTypingTarget = (target: EventTarget | null) =>
@@ -17,16 +20,26 @@ const isTypingTarget = (target: EventTarget | null) =>
   (target.isContentEditable ||
     ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
-/** ←/→ (and PageUp/PageDown) turn pages, +/- zoom, f toggles fullscreen, Home/End jump. */
+/**
+ * ←/→ (and PageUp/PageDown) turn pages, +/- zoom, f toggles fullscreen,
+ * Home/End jump, t toggles Contents, / or Ctrl/Cmd+F opens Search, Esc closes the sidebar.
+ *
+ * Ctrl/Cmd+F is taken over on purpose: the browser's own find only sees the
+ * few pages currently mounted, so it would silently miss most of the book.
+ */
 export function useReaderKeys(actions: ReaderKeyActions) {
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (event.defaultPrevented) return;
     if (
-      event.defaultPrevented ||
-      event.metaKey ||
-      event.ctrlKey ||
-      event.altKey
-    )
+      (event.metaKey || event.ctrlKey) &&
+      !event.altKey &&
+      event.key.toLowerCase() === "f"
+    ) {
+      event.preventDefault();
+      actions.openSearch();
       return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (isTypingTarget(event.target)) return;
 
     const handlers: Record<string, () => void> = {
@@ -41,6 +54,10 @@ export function useReaderKeys(actions: ReaderKeyActions) {
       "-": actions.zoomOut,
       _: actions.zoomOut,
       f: actions.toggleFullscreen,
+      "/": actions.openSearch,
+      t: actions.toggleContents,
+      T: actions.toggleContents,
+      Escape: actions.closeSidebar,
       F: actions.toggleFullscreen,
     };
     const handler = handlers[event.key];
