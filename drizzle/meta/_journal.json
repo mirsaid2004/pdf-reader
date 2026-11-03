@@ -8,6 +8,13 @@
       "when": 1793645023526,
       "tag": "0000_init_auth_shelves",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793702552786,
+      "tag": "0001_books",
+      "breakpoints": true
     }
   ]
 }

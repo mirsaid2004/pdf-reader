@@ -26,6 +26,7 @@ npm run format:check
 npm run db:generate -- --name <migration_name>   # generate SQL migration from schema
 npm run db:migrate     # apply migrations (reads .env.local via @next/env)
 npm run db:push | db:studio
+npm run r2:check       # verifies R2 creds, presigned PUT/GET, Range, and bucket CORS for localhost + NEXT_PUBLIC_APP_URL
 ```
 
 There is no test runner yet; Playwright E2E arrives in Phase 8.
@@ -39,26 +40,43 @@ There is no test runner yet; Playwright E2E arrives in Phase 8.
 ## Architecture
 
 ### Feature-Sliced Design layout
+
 - Root `app/` holds **Next.js routing only**. Route files are thin re-exports/wrappers of `src/pages/*` (e.g. `app/page.tsx` → `@/pages/home`).
 - `src/` holds the FSD layers: `app` (global styles/providers) → `pages` → `widgets` → `features` → `entities` → `shared`. Import only downward. `@/*` maps to `./src/*`.
 - The empty root `pages/` folder (with README) must stay: without it Next.js treats `src/pages` as the Pages Router and the build fails with "`pages` and `app` directories should be under the same folder".
 - Slices expose a public `index.ts`. Server-only entity APIs are exposed separately via `server.ts` (e.g. `@/entities/shelf/server`) so client code never pulls in DB code.
 
 ### Auth (`src/shared/auth/`)
+
 - The Auth.js instance lives in `shared` (not the FSD `app` layer) because features need `signIn`/`signOut`. Config is a lazy function so `next build` doesn't need env vars.
 - Database session strategy. `proxy.ts` does only an **optimistic cookie-presence check** for `/library/*` and `/read/*`. The **authoritative check** is `requireUser()` / `getCurrentUser()` in `session.ts`; every protected page, server action, and route handler must call it (and later, check resource ownership against `user.id`).
 - `routes.ts` contains no server-only code (the proxy imports it). It holds `sanitizeCallbackUrl()`, which must be used for any post-auth redirect.
 
 ### Database (`src/shared/db/`)
+
 - All Drizzle tables live in `shared/db/schema/` (re-exported from `schema/index.ts`, which `drizzle.config.ts` points at). Tables are added in the phase that needs them.
 - `casing: "snake_case"` is set in both the client and drizzle config: write camelCase property names with no explicit column names. Auth.js tables keep the adapter's expected property names (`providerAccountId`, `refresh_token`, …).
 - `getDb()` is a lazy, memoized Neon **HTTP** driver client: no interactive transactions. UUID PKs with `defaultRandom()`. User-owned tables cascade on user delete; book-owned tables cascade on book delete.
 - `shelves.kind` (`reading | want_to_read | finished`, null for custom shelves) identifies the 3 system shelves: they can be renamed but not deleted, and stats use `kind` rather than names. Defaults are inserted in Auth.js `events.createUser` and self-healed by `getUserShelves()`.
 
+### Storage & uploads (`src/shared/lib/r2/`, `src/features/upload-book/`)
+
+- R2 keys are `users/{userId}/books/{bookId}/{book.pdf|cover.webp|cover.jpg}` and are **always derived server-side** from the session user (`keys.ts`); never accept a key from the client.
+- The S3 client sets `requestChecksumCalculation`/`responseChecksumValidation: "WHEN_REQUIRED"`. Without this, browser PUTs to presigned R2 URLs fail. Presigned PUTs sign `content-type` and `content-length`, so R2 rejects any other file.
+- Upload flow: client validates and extracts metadata with pdf.js → `requestUpload` action (presign) → XHR PUTs (for progress) → `createBook` action (HEAD + `%PDF-` magic-byte check, then insert). Delete removes the DB row first, then R2 objects.
+- Covers are served via `GET /api/books/[bookId]/cover` (ownership check → 302 to a presigned URL), rendered with `next/image` `unoptimized`.
+- pdf.js (v6) is loaded only in the browser via `loadPdfjs()` (`shared/lib/pdfjs`), which sets `GlobalWorkerOptions.workerPort` once. In v6, `destroy()` is on `doc.loadingTask`, not the document.
+
+### Server actions
+
+- Return `ActionResult<T>` (`shared/lib/action-result.ts`) instead of throwing: thrown errors are redacted in production. Validate input with zod (`unknown` in, `safeParse`). Use `getCurrentUser()` (not `requireUser()`, which redirects). Call `refresh()` from `next/cache` after mutations that change the current page.
+
 ### Env
+
 - Server vars: `getServerEnv(key)` from `@/shared/config/env` (server-only, validated lazily). Browser-safe values: `publicEnv` from `@/shared/config` (`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_MAX_UPLOAD_MB`). `.env.example` lists every variable.
 
 ### Planned architecture (upcoming phases; keep to these decisions)
+
 - PDFs and covers live in a **private** Cloudflare R2 bucket; DB stores only keys and metadata. Uploads go **browser → R2 via presigned PUT**; never stream file bodies through Netlify functions. Reading uses short-lived presigned GET URLs issued after an ownership check. The bucket needs CORS for the app origin and must allow Range requests (pdf.js progressive loading).
 - Cover thumbnail, page count, title/author, outline, and the `has_text_layer` check are extracted **client-side** with pdf.js at upload time (no server canvas).
 - Highlight rects are stored normalized to page size (0–1). In-book search is client-side via `getTextContent()`, cached per book in IndexedDB.

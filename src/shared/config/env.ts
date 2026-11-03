@@ -21,6 +21,17 @@ const SERVER_ENV_KEYS = [
   "NEXT_PUBLIC_APP_URL",
 ] as const;
 
+export type OptionalServerEnvKey =
+  // Only needed for jurisdiction buckets, e.g. https://<account>.eu.r2.cloudflarestorage.com
+  "R2_ENDPOINT";
+
+export function getOptionalServerEnv(
+  key: OptionalServerEnvKey,
+): string | undefined {
+  const value = process.env[key];
+  return value === undefined || value === "" ? undefined : value;
+}
+
 export type ServerEnvKey = (typeof SERVER_ENV_KEYS)[number];
 
 export function getServerEnv(key: ServerEnvKey): string {

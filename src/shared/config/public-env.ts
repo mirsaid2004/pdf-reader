@@ -11,7 +11,9 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
 }
 
 export const publicEnv = {
-  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  // Normalized to an origin (no trailing slash) so it can be compared/joined safely.
+  appUrl: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000")
+    .origin,
   maxUploadBytes:
     parsePositiveInt(
       process.env.NEXT_PUBLIC_MAX_UPLOAD_MB,
