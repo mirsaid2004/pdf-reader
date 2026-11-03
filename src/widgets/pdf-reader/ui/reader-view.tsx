@@ -10,8 +10,21 @@ import {
 } from "react";
 
 import type { OutlineItem, ReaderBook } from "@/entities/book";
+import type { Bookmark } from "@/entities/bookmark";
+import type { Highlight } from "@/entities/highlight";
+import {
+  HighlightPopover,
+  pageAtPoint,
+  SelectionBar,
+  useHighlights,
+  useTextSelection,
+  type HighlightActions,
+  type ViewportBox,
+} from "@/features/highlight-text";
 import { useBookSearch } from "@/features/search-book";
+import { useBookmarks, type BookmarkActions } from "@/features/toggle-bookmark";
 import { useReadingTracker } from "@/features/track-reading";
+import type { HighlightColor } from "@/shared/lib/highlight-colors";
 import { useStoredState } from "@/shared/lib/use-stored-state";
 
 import { isReaderTheme, THEME_STYLES, type ReaderTheme } from "../model/themes";
@@ -51,6 +64,10 @@ const subscribeCoarse = (onChange: () => void) => {
 type ReaderViewProps = {
   book: ReaderBook;
   outline: OutlineItem[] | null;
+  initialBookmarks: Bookmark[];
+  initialHighlights: Highlight[];
+  bookmarkActions?: BookmarkActions;
+  highlightActions?: HighlightActions;
   doc: PDFDocumentProxy;
   firstPage: PageSize;
   initialPage: number;
@@ -61,6 +78,10 @@ type ReaderViewProps = {
 export function ReaderView({
   book,
   outline,
+  initialBookmarks,
+  initialHighlights,
+  bookmarkActions,
+  highlightActions,
   doc,
   firstPage,
   initialPage,
@@ -129,7 +150,10 @@ export function ReaderView({
   const [overlayTab, setOverlayTab] = useState<SidebarTab | null>(null);
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   const storedTab: SidebarTab | null =
-    storedSidebar === "contents" || storedSidebar === "search"
+    storedSidebar === "contents" ||
+    storedSidebar === "search" ||
+    storedSidebar === "bookmarks" ||
+    storedSidebar === "highlights"
       ? storedSidebar
       : null;
   const sidebarTab = docked ? storedTab : overlayTab;
@@ -166,6 +190,67 @@ export function ReaderView({
     enabled: book.hasTextLayer,
     onGoToPage: goToPageFromSidebar,
   });
+
+  // ── bookmarks, highlights, selection ──
+  const bookmarks = useBookmarks({
+    bookId: book.id,
+    initial: initialBookmarks,
+    actions: bookmarkActions,
+  });
+  const highlights = useHighlights({
+    bookId: book.id,
+    initial: initialHighlights,
+    actions: highlightActions,
+  });
+  const { selection, clear: clearSelection } = useTextSelection(scroller);
+  const [popover, setPopover] = useState<{
+    id: string;
+    anchor: ViewportBox;
+    focusNote: boolean;
+  } | null>(null);
+  const popoverHighlight = popover
+    ? (highlights.items.find((item) => item.id === popover.id) ?? null)
+    : null;
+
+  /** The saved highlight under a screen point, with its on-screen box. */
+  const findHighlightAt = (clientX: number, clientY: number) => {
+    const hit = pageAtPoint(clientX, clientY);
+    if (!hit) return null;
+    const box = hit.element.getBoundingClientRect();
+    // Newest on top.
+    for (const highlight of highlights.forPage(hit.page).toReversed()) {
+      for (const rect of highlight.rects) {
+        if (
+          hit.x < rect.x ||
+          hit.x > rect.x + rect.w ||
+          hit.y < rect.y ||
+          hit.y > rect.y + rect.h
+        )
+          continue;
+        const anchor: ViewportBox = {
+          left: box.left + rect.x * box.width,
+          top: box.top + rect.y * box.height,
+          right: box.left + (rect.x + rect.w) * box.width,
+          bottom: box.top + (rect.y + rect.h) * box.height,
+        };
+        return { highlight, anchor };
+      }
+    }
+    return null;
+  };
+
+  const highlightSelection = async (
+    color: HighlightColor,
+    withNote: boolean,
+  ) => {
+    if (!selection) return;
+    const { parts, anchor } = selection;
+    clearSelection();
+    const created = await highlights.create(parts, color);
+    const first = created?.[0];
+    if (withNote && first)
+      setPopover({ id: first.id, anchor, focusNote: true });
+  };
 
   // Keep ?page=N in the URL so a refresh stays put, and tell the parent so a
   // hidden-then-shown route resumes here (saving to the DB is Phase 5).
@@ -236,6 +321,7 @@ export function ReaderView({
     closeSidebar: () => {
       if (sidebarTab) closeSidebar();
     },
+    toggleBookmark: () => void bookmarks.toggleAt(currentPage),
   });
 
   useEffect(() => {
@@ -323,6 +409,7 @@ export function ReaderView({
       return;
     if (Date.now() - start.at > TAP_MAX_MS) return;
     if (!window.getSelection()?.isCollapsed) return; // text selection in progress
+    if (findHighlightAt(event.clientX, event.clientY)) return; // the click handler opens it
 
     const rect = event.currentTarget.getBoundingClientRect();
     const fraction = (event.clientX - rect.left) / rect.width;
@@ -359,6 +446,7 @@ export function ReaderView({
               : null
           }
           focusToken={search.highlight?.focusToken ?? 0}
+          highlights={highlights.forPage(i + 1)}
         />,
       );
     }
@@ -392,6 +480,8 @@ export function ReaderView({
         sidebarTab={sidebarTab}
         onToggleContents={() => toggleSidebar("contents")}
         onToggleSearch={() => toggleSidebar("search")}
+        bookmarked={bookmarks.has(currentPage)}
+        onToggleBookmark={() => void bookmarks.toggleAt(currentPage)}
       />
       <div className="absolute inset-0 flex">
         {sidebarTab && (
@@ -406,6 +496,9 @@ export function ReaderView({
             hasTextLayer={book.hasTextLayer}
             search={search}
             searchFocusSignal={searchFocusSignal}
+            bookId={book.id}
+            bookmarks={bookmarks}
+            highlights={highlights}
           />
         )}
         <div
@@ -416,6 +509,16 @@ export function ReaderView({
           // pan-x/pan-y hands pinch gestures to us instead of zooming the whole page.
           style={{ touchAction: "pan-x pan-y" }}
           className="relative h-full min-w-0 flex-1 overflow-auto overscroll-contain outline-none"
+          onClick={(event) => {
+            if (!(window.getSelection()?.isCollapsed ?? true)) return; // a drag-select just ended
+            const found = findHighlightAt(event.clientX, event.clientY);
+            if (found)
+              setPopover({
+                id: found.highlight.id,
+                anchor: found.anchor,
+                focusNote: false,
+              });
+          }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={(event) => endPointer(event, false)}
@@ -429,6 +532,30 @@ export function ReaderView({
           </div>
         </div>
       </div>
+
+      {selection && !popover && (
+        <SelectionBar
+          selection={selection}
+          touch={coarsePointer}
+          onHighlight={(color) => void highlightSelection(color, false)}
+          onAddNote={() => void highlightSelection("yellow", true)}
+        />
+      )}
+      {popover && popoverHighlight && (
+        <HighlightPopover
+          key={popover.id}
+          highlight={popoverHighlight}
+          anchor={popover.anchor}
+          autoFocusNote={popover.focusNote}
+          onClose={() => setPopover(null)}
+          onColor={(color) => void highlights.update(popover.id, { color })}
+          onNote={(note) => void highlights.update(popover.id, { note })}
+          onDelete={() => {
+            setPopover(null);
+            void highlights.remove(popover.id);
+          }}
+        />
+      )}
     </div>
   );
 }

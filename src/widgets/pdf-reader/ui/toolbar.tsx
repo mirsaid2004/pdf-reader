@@ -24,9 +24,11 @@ type ToolbarProps = {
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onInteract: () => void;
-  sidebarTab: "contents" | "search" | null;
+  sidebarTab: "contents" | "search" | "bookmarks" | "highlights" | null;
   onToggleContents: () => void;
   onToggleSearch: () => void;
+  bookmarked: boolean;
+  onToggleBookmark: () => void;
 };
 
 const iconButton =
@@ -55,6 +57,8 @@ export function Toolbar(props: ToolbarProps) {
     sidebarTab,
     onToggleContents,
     onToggleSearch,
+    bookmarked,
+    onToggleBookmark,
   } = props;
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -102,6 +106,18 @@ export function Toolbar(props: ToolbarProps) {
         onClick={onToggleSearch}
       >
         <span aria-hidden>⌕</span>
+      </button>
+      <button
+        type="button"
+        className={`${iconButton} ${bookmarked ? "bg-foreground/10" : ""}`}
+        aria-label={
+          bookmarked ? "Remove bookmark from this page" : "Bookmark this page"
+        }
+        title={bookmarked ? "Remove bookmark (b)" : "Bookmark this page (b)"}
+        aria-pressed={bookmarked}
+        onClick={onToggleBookmark}
+      >
+        <span aria-hidden>{bookmarked ? "★" : "☆"}</span>
       </button>
 
       <h1 className="mx-2 hidden min-w-0 flex-1 truncate text-sm font-medium md:block">

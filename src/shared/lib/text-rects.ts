@@ -36,3 +36,53 @@ export function normalizedRectsFromRange(
   }
   return rects;
 }
+
+/**
+ * Merges the many per-span boxes of a selected line into one box per line,
+ * so stored highlights are small and have no seams between words (and the
+ * duplicate boxes a Range sometimes reports for one line don't stack up).
+ *
+ * Boxes are grouped into lines first (similar top and height), then joined
+ * left to right when they touch, overlap, or are separated by under a
+ * word-space.
+ */
+export function mergeLineRects(rects: NormalizedRect[]): NormalizedRect[] {
+  const lines: NormalizedRect[][] = [];
+  for (const rect of rects.toSorted((a, b) => a.y - b.y)) {
+    const line = lines.find((candidate) => {
+      const reference = candidate[0];
+      return (
+        reference !== undefined &&
+        Math.abs(rect.y - reference.y) < reference.h * 0.5 &&
+        Math.abs(rect.h - reference.h) < reference.h * 0.6
+      );
+    });
+    if (line) line.push(rect);
+    else lines.push([rect]);
+  }
+
+  const merged: NormalizedRect[] = [];
+  for (const line of lines) {
+    const [first, ...rest] = line.toSorted((a, b) => a.x - b.x);
+    if (!first) continue;
+    let current = { ...first };
+    for (const rect of rest) {
+      const gap = rect.x - (current.x + current.w);
+      if (gap < current.h * 0.6) {
+        const top = Math.min(current.y, rect.y);
+        const bottom = Math.max(current.y + current.h, rect.y + rect.h);
+        current = {
+          x: current.x,
+          y: top,
+          w: Math.max(current.x + current.w, rect.x + rect.w) - current.x,
+          h: bottom - top,
+        };
+      } else {
+        merged.push(current);
+        current = { ...rect };
+      }
+    }
+    merged.push(current);
+  }
+  return merged.toSorted((a, b) => a.y - b.y || a.x - b.x);
+}

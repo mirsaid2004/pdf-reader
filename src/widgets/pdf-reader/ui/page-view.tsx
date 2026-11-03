@@ -5,6 +5,7 @@ import { memo, useEffect, useRef, useState } from "react";
 
 import { computeSearchRects } from "@/features/search-book";
 import { loadPdfjs } from "@/shared/lib/pdfjs";
+import { HIGHLIGHT_STYLES, type Highlight } from "@/entities/highlight";
 import type { NormalizedRect } from "@/shared/lib/text-rects";
 
 import type { PageSize } from "../model/use-virtual-pages";
@@ -35,6 +36,8 @@ type PageViewProps = {
   activeOrdinal: number | null;
   /** Changes on each navigation so the active hit is scrolled to again. */
   focusToken: number;
+  /** This page's saved highlights. */
+  highlights: readonly Highlight[];
 };
 
 const NO_HITS: NormalizedRect[][] = [];
@@ -56,6 +59,7 @@ export const PageView = memo(function PageView({
   highlightQuery: query,
   activeOrdinal,
   focusToken,
+  highlights,
 }: PageViewProps) {
   const canvasHost = useRef<HTMLDivElement>(null);
   const textHost = useRef<HTMLDivElement>(null);
@@ -206,6 +210,7 @@ export const PageView = memo(function PageView({
   return (
     <div
       ref={pageRef}
+      data-page={pageNumber}
       className="pdf-page absolute shadow-md"
       aria-label={`Page ${pageNumber}`}
       style={
@@ -224,6 +229,29 @@ export const PageView = memo(function PageView({
         className="absolute inset-0 bg-white"
         style={{ filter: canvasFilter === "none" ? undefined : canvasFilter }}
       />
+      {/* Saved highlights: percent-positioned (they're fractions of the page), under the text layer. */}
+      {highlights.length > 0 && (
+        <div className="pointer-events-none absolute inset-0" aria-hidden>
+          {highlights.map((highlight) =>
+            highlight.rects.map((rect, index) => (
+              <div
+                key={`${highlight.id}-${index}`}
+                className={`absolute rounded-[2px] ${HIGHLIGHT_STYLES[highlight.color].overlay} ${
+                  highlight.note
+                    ? "border-b-2 border-dotted border-foreground/40"
+                    : ""
+                }`}
+                style={{
+                  left: `${rect.x * 100}%`,
+                  top: `${rect.y * 100}%`,
+                  width: `${rect.w * 100}%`,
+                  height: `${rect.h * 100}%`,
+                }}
+              />
+            )),
+          )}
+        </div>
+      )}
       {hits.length > 0 && (
         <div className="pointer-events-none absolute inset-0" aria-hidden>
           {hits.map((group, groupIndex) =>

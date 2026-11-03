@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 
 import type { OutlineItem, ReaderBook } from "@/entities/book";
+import type { Bookmark } from "@/entities/bookmark";
+import type { Highlight } from "@/entities/highlight";
+import type { HighlightActions } from "@/features/highlight-text";
+import type { BookmarkActions } from "@/features/toggle-bookmark";
 import { getBookReadUrl } from "@/features/read-book";
 
 import { usePdfDocument } from "../model/use-pdf-document";
@@ -12,6 +16,11 @@ import { ReaderView } from "./reader-view";
 type PdfReaderProps = {
   book: ReaderBook;
   outline: OutlineItem[] | null;
+  bookmarks: Bookmark[];
+  highlights: Highlight[];
+  /** Save operations; default to the real server actions (tests inject fakes). */
+  bookmarkActions?: BookmarkActions;
+  highlightActions?: HighlightActions;
   initialUrl: string;
   initialPage: number;
 };
@@ -19,6 +28,10 @@ type PdfReaderProps = {
 export function PdfReader({
   book,
   outline,
+  bookmarks,
+  highlights,
+  bookmarkActions,
+  highlightActions,
   initialUrl,
   initialPage,
 }: PdfReaderProps) {
@@ -42,6 +55,10 @@ export function PdfReader({
       <ReaderView
         book={book}
         outline={outline}
+        initialBookmarks={bookmarks}
+        initialHighlights={highlights}
+        bookmarkActions={bookmarkActions}
+        highlightActions={highlightActions}
         doc={state.doc}
         firstPage={state.firstPage}
         initialPage={resumePage}

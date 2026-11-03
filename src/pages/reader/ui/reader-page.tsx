@@ -4,6 +4,8 @@ import { Suspense } from "react";
 
 import { createReadUrl } from "@/features/read-book/server";
 import { getReaderBook } from "@/entities/book/server";
+import { getBookmarks } from "@/entities/bookmark/server";
+import { getHighlights } from "@/entities/highlight/server";
 import { getSavedPage } from "@/entities/reading-progress/server";
 import { requireUser } from "@/shared/auth";
 import { PdfReader } from "@/widgets/pdf-reader";
@@ -34,9 +36,11 @@ async function ReaderContent({
   const result = await getReaderBook(user.id, bookId);
   if (!result) notFound();
 
-  const [url, savedPage] = await Promise.all([
+  const [url, savedPage, bookmarks, highlights] = await Promise.all([
     createReadUrl(result.fileKey),
     getSavedPage(user.id, bookId),
+    getBookmarks(user.id, bookId),
+    getHighlights(user.id, bookId),
   ]);
 
   // Resume order: an explicit ?page=N, then the saved page, then page 1.
@@ -49,6 +53,8 @@ async function ReaderContent({
     <PdfReader
       book={result.book}
       outline={result.outline}
+      bookmarks={bookmarks}
+      highlights={highlights}
       initialUrl={url}
       initialPage={initialPage}
     />

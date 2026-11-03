@@ -24,3 +24,24 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Chart colours (validated palette, slot 1). Surfaces/text swap with the OS theme. */
+.viz-root {
+  --viz-surface: #fcfcfb;
+  --viz-text-primary: #0b0b0b;
+  --viz-text-secondary: #52514e;
+  --viz-series-1: #2a78d6;
+  --viz-grid: color-mix(
+    in srgb,
+    var(--viz-text-primary) 10%,
+    var(--viz-surface)
+  );
+}
+@media (prefers-color-scheme: dark) {
+  .viz-root {
+    --viz-surface: #1a1a19;
+    --viz-text-primary: #f0efec;
+    --viz-text-secondary: #c3c2b7;
+    --viz-series-1: #3987e5;
+  }
+}

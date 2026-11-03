@@ -1,10 +1,18 @@
 "use client";
 
 import type { OutlineItem } from "@/entities/book";
+import {
+  HighlightsPanel,
+  type HighlightsState,
+} from "@/features/highlight-text";
 import { SearchPanel, type BookSearch } from "@/features/search-book";
 import { TocPanel } from "@/features/table-of-contents";
+import {
+  BookmarksPanel,
+  type BookmarksState,
+} from "@/features/toggle-bookmark";
 
-export type SidebarTab = "contents" | "search";
+export type SidebarTab = "contents" | "search" | "bookmarks" | "highlights";
 
 type ReaderSidebarProps = {
   tab: SidebarTab;
@@ -18,11 +26,16 @@ type ReaderSidebarProps = {
   hasTextLayer: boolean;
   search: BookSearch;
   searchFocusSignal: number;
+  bookId: string;
+  bookmarks: BookmarksState;
+  highlights: HighlightsState;
 };
 
 const TABS: { id: SidebarTab; label: string }[] = [
   { id: "contents", label: "Contents" },
   { id: "search", label: "Search" },
+  { id: "bookmarks", label: "Bookmarks" },
+  { id: "highlights", label: "Highlights" },
 ];
 
 export function ReaderSidebar(props: ReaderSidebarProps) {
@@ -37,6 +50,9 @@ export function ReaderSidebar(props: ReaderSidebarProps) {
     hasTextLayer,
     search,
     searchFocusSignal,
+    bookId,
+    bookmarks,
+    highlights,
   } = props;
 
   return (
@@ -53,12 +69,16 @@ export function ReaderSidebar(props: ReaderSidebarProps) {
         aria-label="Contents and search"
         className={
           docked
-            ? "relative z-0 flex h-full w-80 shrink-0 flex-col border-r border-foreground/10 bg-background pt-12 text-foreground"
+            ? "relative z-0 flex h-full w-84 shrink-0 flex-col border-r border-foreground/10 bg-background pt-12 text-foreground"
             : "fixed top-12 bottom-0 left-0 z-20 flex w-[min(22rem,88vw)] flex-col bg-background text-foreground shadow-xl"
         }
       >
         <div className="flex items-center justify-between border-b border-foreground/10 px-2">
-          <div role="tablist" aria-label="Sidebar sections" className="flex">
+          <div
+            role="tablist"
+            aria-label="Sidebar sections"
+            className="flex min-w-0 flex-1"
+          >
             {TABS.map(({ id, label }) => (
               <button
                 key={id}
@@ -68,7 +88,7 @@ export function ReaderSidebar(props: ReaderSidebarProps) {
                 aria-selected={tab === id}
                 aria-controls={`sidebar-panel-${id}`}
                 onClick={() => onTabChange(id)}
-                className={`border-b-2 px-3 py-2.5 text-sm ${
+                className={`min-w-0 flex-1 truncate border-b-2 px-1 py-2.5 text-center text-xs ${
                   tab === id
                     ? "border-foreground font-medium"
                     : "border-transparent text-foreground/60 hover:text-foreground"
@@ -116,6 +136,33 @@ export function ReaderSidebar(props: ReaderSidebarProps) {
             active={tab === "search"}
             focusSignal={searchFocusSignal}
             onClose={onClose}
+          />
+        </div>
+        <div
+          role="tabpanel"
+          id="sidebar-panel-bookmarks"
+          aria-labelledby="sidebar-tab-bookmarks"
+          hidden={tab !== "bookmarks"}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
+          <BookmarksPanel
+            bookmarks={bookmarks}
+            currentPage={currentPage}
+            onGoToPage={onGoToPage}
+          />
+        </div>
+        <div
+          role="tabpanel"
+          id="sidebar-panel-highlights"
+          aria-labelledby="sidebar-tab-highlights"
+          hidden={tab !== "highlights"}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
+          <HighlightsPanel
+            bookId={bookId}
+            highlights={highlights}
+            currentPage={currentPage}
+            onGoToPage={onGoToPage}
           />
         </div>
       </aside>

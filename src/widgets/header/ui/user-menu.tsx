@@ -51,6 +51,12 @@ export async function UserMenu() {
         >
           My library
         </Link>
+        <Link
+          href="/stats"
+          className="block rounded-lg px-3 py-2 text-sm hover:bg-foreground/5"
+        >
+          Reading stats
+        </Link>
         <SignOutButton className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-foreground/5" />
       </div>
     </>

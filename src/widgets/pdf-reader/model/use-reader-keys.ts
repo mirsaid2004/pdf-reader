@@ -13,6 +13,7 @@ export type ReaderKeyActions = {
   openSearch: () => void;
   toggleContents: () => void;
   closeSidebar: () => void;
+  toggleBookmark: () => void;
 };
 
 const isTypingTarget = (target: EventTarget | null) =>
@@ -22,7 +23,7 @@ const isTypingTarget = (target: EventTarget | null) =>
 
 /**
  * ←/→ (and PageUp/PageDown) turn pages, +/- zoom, f toggles fullscreen,
- * Home/End jump, t toggles Contents, / or Ctrl/Cmd+F opens Search, Esc closes the sidebar.
+ * Home/End jump, b bookmarks the page, t toggles Contents, / or Ctrl/Cmd+F opens Search, Esc closes the sidebar.
  *
  * Ctrl/Cmd+F is taken over on purpose: the browser's own find only sees the
  * few pages currently mounted, so it would silently miss most of the book.
@@ -56,6 +57,8 @@ export function useReaderKeys(actions: ReaderKeyActions) {
       f: actions.toggleFullscreen,
       "/": actions.openSearch,
       t: actions.toggleContents,
+      b: actions.toggleBookmark,
+      B: actions.toggleBookmark,
       T: actions.toggleContents,
       Escape: actions.closeSidebar,
       F: actions.toggleFullscreen,
