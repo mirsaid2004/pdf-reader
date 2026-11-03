@@ -11,6 +11,7 @@ import type { BookmarkActions } from "@/features/toggle-bookmark";
 import { getBookReadUrl } from "@/features/read-book";
 
 import { usePdfDocument } from "../model/use-pdf-document";
+import { ReaderErrorBoundary } from "./reader-error-boundary";
 import { ReaderView } from "./reader-view";
 
 type PdfReaderProps = {
@@ -52,19 +53,21 @@ export function PdfReader({
 
   if (state.status === "ready") {
     return (
-      <ReaderView
-        book={book}
-        outline={outline}
-        initialBookmarks={bookmarks}
-        initialHighlights={highlights}
-        bookmarkActions={bookmarkActions}
-        highlightActions={highlightActions}
-        doc={state.doc}
-        firstPage={state.firstPage}
-        initialPage={resumePage}
-        onPageChange={setResumePage}
-        onRenderError={onRenderError}
-      />
+      <ReaderErrorBoundary title="The reader hit a problem">
+        <ReaderView
+          book={book}
+          outline={outline}
+          initialBookmarks={bookmarks}
+          initialHighlights={highlights}
+          bookmarkActions={bookmarkActions}
+          highlightActions={highlightActions}
+          doc={state.doc}
+          firstPage={state.firstPage}
+          initialPage={resumePage}
+          onPageChange={setResumePage}
+          onRenderError={onRenderError}
+        />
+      </ReaderErrorBoundary>
     );
   }
 
