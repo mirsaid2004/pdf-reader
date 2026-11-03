@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import type { ReaderBook } from "@/entities/book";
+import { useReadingTracker } from "@/features/track-reading";
 import { useStoredState } from "@/shared/lib/use-stored-state";
 
 import { isReaderTheme, THEME_STYLES, type ReaderTheme } from "../model/themes";
@@ -109,6 +110,8 @@ export function ReaderView({
     [scrollToPage, book.pageCount],
   );
   const { current: currentPage } = view;
+
+  useReadingTracker({ bookId: book.id, initialPage, currentPage });
 
   // Keep ?page=N in the URL so a refresh stays put, and tell the parent so a
   // hidden-then-shown route resumes here (saving to the DB is Phase 5).

@@ -15,7 +15,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "r2:check": "node scripts/r2-check.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:unit": "node --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@auth/drizzle-adapter": "1.11.3",

@@ -2,5 +2,6 @@
 export * from "./auth";
 export * from "./books";
 export * from "./reading-progress";
+export * from "./reading-sessions";
 export * from "./shelf-books";
 export * from "./shelves";

@@ -1,9 +1,10 @@
 "use server";
 
-import { and, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { addBookToShelf } from "@/entities/shelf/server";
 import { getCurrentUser } from "@/shared/auth";
 import { getDb } from "@/shared/db";
 import { books, shelfBooks, shelves } from "@/shared/db/schema";
@@ -52,34 +53,8 @@ export async function setBookShelf(
       .where(
         and(eq(shelfBooks.bookId, bookId), eq(shelfBooks.shelfId, shelfId)),
       );
-  } else if (shelf.kind) {
-    const otherStatusShelves = db
-      .select({ id: shelves.id })
-      .from(shelves)
-      .where(
-        and(
-          eq(shelves.userId, user.id),
-          isNotNull(shelves.kind),
-          ne(shelves.id, shelfId),
-        ),
-      );
-    // batch() runs both statements in one transaction.
-    await db.batch([
-      db
-        .delete(shelfBooks)
-        .where(
-          and(
-            eq(shelfBooks.bookId, bookId),
-            inArray(shelfBooks.shelfId, otherStatusShelves),
-          ),
-        ),
-      db.insert(shelfBooks).values({ shelfId, bookId }).onConflictDoNothing(),
-    ]);
   } else {
-    await db
-      .insert(shelfBooks)
-      .values({ shelfId, bookId })
-      .onConflictDoNothing();
+    await addBookToShelf({ userId: user.id, bookId, shelf });
   }
 
   const memberships = await db
