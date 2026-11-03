@@ -38,7 +38,7 @@ export function BookShelvesChecklist({
 
   return (
     <fieldset disabled={pending} className="flex flex-col gap-0.5">
-      <legend className="px-3 pb-1 text-xs font-medium text-foreground/50">
+      <legend className="px-3 pb-1 text-xs font-medium text-foreground/60">
         Shelves
       </legend>
       {shelves.map((shelf) => (

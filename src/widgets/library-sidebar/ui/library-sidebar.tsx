@@ -28,7 +28,7 @@ export function LibrarySidebar({
         }`}
       >
         <span>All books</span>
-        <span className="text-xs text-foreground/50">{totalBooks}</span>
+        <span className="text-xs text-foreground/60">{totalBooks}</span>
       </Link>
       {shelves.map((shelf) => (
         <ShelfItem

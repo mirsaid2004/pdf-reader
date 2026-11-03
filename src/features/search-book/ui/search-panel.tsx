@@ -175,7 +175,7 @@ export function SearchPanel({
               onClick={() => search.goToHit(position)}
               className={`flex w-full gap-3 px-3 py-2 text-left text-sm hover:bg-foreground/5 ${position === activeIndex ? "bg-foreground/10" : ""}`}
             >
-              <span className="w-10 shrink-0 text-xs text-foreground/50 tabular-nums">
+              <span className="w-10 shrink-0 text-xs text-foreground/60 tabular-nums">
                 p. {hit.page}
               </span>
               <span className="min-w-0 text-foreground/80">

@@ -96,7 +96,7 @@ export function TocPanel({
               <span className="size-6 shrink-0" aria-hidden />
             )}
             {item.page === null ? (
-              <span className="min-w-0 flex-1 py-1.5 pr-3 text-foreground/45">
+              <span className="min-w-0 flex-1 py-1.5 pr-3 text-foreground/60">
                 {item.title}
               </span>
             ) : (
@@ -109,7 +109,7 @@ export function TocPanel({
                 <span className={`min-w-0 ${current ? "font-medium" : ""}`}>
                   {item.title}
                 </span>
-                <span className="shrink-0 text-xs text-foreground/50 tabular-nums">
+                <span className="shrink-0 text-xs text-foreground/60 tabular-nums">
                   {item.page}
                 </span>
               </button>

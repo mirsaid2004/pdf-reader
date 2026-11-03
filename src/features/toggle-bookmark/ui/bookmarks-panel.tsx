@@ -92,7 +92,7 @@ function BookmarkRow(props: {
         type="button"
         onClick={onRemove}
         aria-label={`Remove the bookmark on page ${page}`}
-        className="flex size-7 shrink-0 items-center justify-center rounded text-foreground/50 hover:bg-foreground/10 hover:text-red-600"
+        className="flex size-7 shrink-0 items-center justify-center rounded text-foreground/60 hover:bg-foreground/10 hover:text-red-600"
       >
         <span aria-hidden>×</span>
       </button>

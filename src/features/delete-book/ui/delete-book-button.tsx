@@ -22,7 +22,7 @@ export function DeleteBookButton({
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="text-xs text-foreground/50 hover:text-red-600"
+        className="text-xs text-foreground/60 hover:text-red-600"
         aria-label={`Delete ${title}`}
       >
         Delete

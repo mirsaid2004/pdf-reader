@@ -25,7 +25,7 @@ function StatTile({
       <dd className="text-3xl font-semibold tracking-tight tabular-nums">
         {value}
       </dd>
-      {hint && <p className="text-xs text-foreground/50">{hint}</p>}
+      {hint && <p className="text-xs text-foreground/60">{hint}</p>}
     </div>
   );
 }
@@ -78,7 +78,7 @@ async function StatsContent() {
             />
           </dl>
           <PagesPerDayChart days={stats.days} />
-          <p className="text-xs text-foreground/50">
+          <p className="text-xs text-foreground/60">
             Days are in your time zone ({stats.timeZone}).
           </p>
         </>

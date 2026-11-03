@@ -138,12 +138,12 @@ export function ShelfItem({ shelf, active, q }: ShelfItemProps) {
         className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-1.5 text-sm"
       >
         <span className="truncate">{shelf.name}</span>
-        <span className="text-xs text-foreground/50">{shelf.bookCount}</span>
+        <span className="text-xs text-foreground/60">{shelf.bookCount}</span>
       </Link>
       <DropdownMenu
         label={`Options for ${shelf.name}`}
         align="left"
-        triggerClassName="mr-1 flex size-6 items-center justify-center rounded text-foreground/50 hover:bg-foreground/10"
+        triggerClassName="mr-1 flex size-6 items-center justify-center rounded text-foreground/60 hover:bg-foreground/10"
       >
         <button
           type="button"

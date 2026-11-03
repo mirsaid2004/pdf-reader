@@ -40,11 +40,11 @@ export function BookCard({
           </div>
         )}
         <div className="min-w-0">
-          <h3 className="line-clamp-2 text-sm font-medium">{book.title}</h3>
+          <h2 className="line-clamp-2 text-sm font-medium">{book.title}</h2>
           {book.author && (
             <p className="truncate text-xs text-foreground/60">{book.author}</p>
           )}
-          <p className="text-xs text-foreground/50">
+          <p className="text-xs text-foreground/60">
             {book.percent !== null ? `${Math.round(book.percent)}% · ` : ""}
             {book.pageCount} pages{!book.hasTextLayer && " · scanned"}
           </p>

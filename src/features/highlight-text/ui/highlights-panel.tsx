@@ -59,11 +59,11 @@ export function HighlightsPanel({
         <ol className="py-1">
           {groups.map((group) => (
             <li key={group.page}>
-              <h3
-                className={`px-3 pt-3 pb-1 text-xs font-medium tracking-wide uppercase ${group.page === currentPage ? "text-foreground" : "text-foreground/50"}`}
+              <h2
+                className={`px-3 pt-3 pb-1 text-xs font-medium tracking-wide uppercase ${group.page === currentPage ? "text-foreground" : "text-foreground/60"}`}
               >
                 Page {group.page}
-              </h3>
+              </h2>
               <ul>
                 {group.items.map((item) => (
                   <HighlightRow
@@ -116,7 +116,7 @@ function HighlightRow(props: {
           type="button"
           onClick={onDelete}
           aria-label="Delete highlight"
-          className="flex size-6 shrink-0 items-center justify-center rounded text-foreground/40 hover:bg-foreground/10 hover:text-red-600"
+          className="flex size-6 shrink-0 items-center justify-center rounded text-foreground/60 hover:bg-foreground/10 hover:text-red-600"
         >
           <span aria-hidden>×</span>
         </button>
