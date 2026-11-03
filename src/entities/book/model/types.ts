@@ -13,3 +13,11 @@ export type Book = {
   hasCover: boolean;
   createdAt: Date;
 };
+
+/** A book as shown in the library grid. */
+export type LibraryBook = Book & {
+  /** 0–100, or null when the book hasn't been opened yet. */
+  percent: number | null;
+  /** Ids of the shelves this book is on. */
+  shelfIds: string[];
+};

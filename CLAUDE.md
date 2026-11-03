@@ -67,6 +67,14 @@ There is no test runner yet; Playwright E2E arrives in Phase 8.
 - Covers are served via `GET /api/books/[bookId]/cover` (ownership check → 302 to a presigned URL), rendered with `next/image` `unoptimized`.
 - pdf.js (v6) is loaded only in the browser via `loadPdfjs()` (`shared/lib/pdfjs`), which sets `GlobalWorkerOptions.workerPort` once. In v6, `destroy()` is on `doc.loadingTask`, not the document.
 
+### Library (`src/pages/library`, `widgets/library-sidebar`, `widgets/book-grid`)
+
+- The view lives in the URL: `/library?shelf=<id>&q=<text>`. The page awaits `searchParams` inside a `<Suspense>` child, validates `shelf` against the user's own shelves (unknown id ⇒ "All books"), and passes `initialQuery` down to the client search box (no `useSearchParams`, which would need its own Suspense). Build URLs with `libraryHref()` from `@/entities/shelf`.
+- Search is server-side `ILIKE` on title/author; `escapeLike()` makes `%`/`_` literal.
+- Status shelves (`kind` = reading / want_to_read / finished) are **mutually exclusive per book**; `setBookShelf` enforces this inside `db.batch([...])` (the Neon HTTP driver has no `transaction()`, but `batch` is atomic). Custom shelves are free-form. System shelves can be renamed, not deleted (`deleteShelf` filters `kind IS NULL`).
+- `BookCard` (entities) is display-only and receives actions via a `menu` slot, because FSD forbids entities importing features. `shared/ui/dropdown-menu.tsx` is the shared click-to-open menu.
+- `reading_progress` exists but is only read (left join) until Phase 5 starts writing it.
+
 ### Server actions
 
 - Return `ActionResult<T>` (`shared/lib/action-result.ts`) instead of throwing: thrown errors are redacted in production. Validate input with zod (`unknown` in, `safeParse`). Use `getCurrentUser()` (not `requireUser()`, which redirects). Call `refresh()` from `next/cache` after mutations that change the current page.

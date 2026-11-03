@@ -4,6 +4,6 @@ import { LibraryPage } from "@/pages/library";
 
 export const metadata: Metadata = { title: "Library" };
 
-export default function Page() {
-  return <LibraryPage />;
+export default function Page({ searchParams }: PageProps<"/library">) {
+  return <LibraryPage searchParams={searchParams} />;
 }

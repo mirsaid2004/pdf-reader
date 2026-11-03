@@ -4,24 +4,31 @@ import { asc, eq, sql } from "drizzle-orm";
 
 import { getDb } from "@/shared/db";
 import { insertDefaultShelves } from "@/shared/db/default-shelves";
-import { DEFAULT_SHELVES, shelves } from "@/shared/db/schema";
+import { DEFAULT_SHELVES, shelfBooks, shelves } from "@/shared/db/schema";
 
 import type { Shelf } from "../model/types";
 
 async function selectShelves(userId: string): Promise<Shelf[]> {
   return (
     getDb()
-      .select({ id: shelves.id, name: shelves.name, kind: shelves.kind })
+      .select({
+        id: shelves.id,
+        name: shelves.name,
+        kind: shelves.kind,
+        bookCount: sql<number>`count(${shelfBooks.bookId})::int`,
+      })
       .from(shelves)
+      .leftJoin(shelfBooks, eq(shelfBooks.shelfId, shelves.id))
       .where(eq(shelves.userId, userId))
+      .groupBy(shelves.id)
       // System shelves first (in enum order), then custom shelves by creation.
       .orderBy(sql`${shelves.kind} asc nulls last`, asc(shelves.createdAt))
   );
 }
 
 /**
- * Lists a user's shelves. Self-heals if default shelves are missing
- * (e.g. the createUser event failed after the user row was inserted).
+ * Lists a user's shelves with book counts. Self-heals if default shelves are
+ * missing (e.g. the createUser event failed after the user row was inserted).
  */
 export async function getUserShelves(userId: string): Promise<Shelf[]> {
   const rows = await selectShelves(userId);
