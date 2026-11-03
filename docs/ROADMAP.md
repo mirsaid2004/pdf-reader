@@ -13,6 +13,87 @@ Both were listed as out of scope in the original brief ("text-to-speech", "OCR")
 
 ---
 
+## Deferred from Phase 8
+
+Phase 8 was narrowed to loading skeletons, error boundaries, toasts and a Lighthouse pass. These parts of the original
+Phase 8 plan were postponed and are still wanted. They are listed here with the decisions made so far, so they can be
+picked up without redoing the thinking.
+
+### 1. Orphaned storage cleanup _(promised in Phase 2)_
+
+**Problem.** If a tab is closed after the PDF was uploaded to R2 but before the book row is saved, the file stays in R2
+with no database row. Nothing ever deletes it.
+
+**Plan.**
+
+- `npm run r2:cleanup`: lists objects under `users/<userId>/books/<bookId>/…` whose `bookId` has **no row in `books`**
+  and whose last-modified time is **older than 24 hours** (so uploads still in progress are never touched).
+- **Dry run by default**: it only prints what it would delete (key, size, age). Deleting needs an explicit `--delete`.
+- Reuses the existing R2 client in `shared/lib/r2`, in batches (S3 `DeleteObjects` takes 1,000 keys per call).
+- Optional later: a **weekly scheduled Netlify function** that runs the same logic. Start it in dry-run mode and only
+  enable deletion after a few clean reports.
+- Safety rules: never delete anything for a book that exists; never delete outside the `users/` prefix; log counts.
+
+### 2. Playwright end-to-end tests
+
+Playwright is already in the approved stack; it is not installed yet.
+
+**Scenarios (one test each):** sign-in (mocked), upload, open the reader, resume progress, create a highlight, add a
+bookmark.
+
+**How sign-in is mocked.** The app uses database sessions, so a test inserts a test user and a session row and sets the
+`authjs.session-token` cookie. This exercises the real session code path with no OAuth provider involved.
+
+**Test infrastructure (needs the owner):**
+
+- A separate **Neon branch** used only by tests (a branch of the main database is free and isolated).
+- A second **R2 bucket**, e.g. `mdev-reader-test`, with CORS for the test origin. The upload test needs it because the
+  server itself verifies the uploaded file in R2 (a server-side call Playwright cannot intercept).
+- Secrets for both, kept out of the repo (local `.env.test` and GitHub Actions secrets).
+
+**Details.**
+
+- Run against a production build on its own port (e.g. 3100), not the dev server.
+- A small generated PDF fixture with an outline and some text.
+- Each run creates its own user and removes it afterwards (rows cascade on user delete).
+- Browsers are downloaded by Playwright itself (a one-time download of a few hundred MB).
+- **CI (recommended):** a GitHub Actions workflow that runs typecheck, lint, unit tests and Playwright on pull requests.
+
+### 3. Deploy to Netlify, and the README
+
+- **Environment variables:** a table in the README of every variable, what it is, and where to get it (database URL,
+  `AUTH_SECRET`, Google and GitHub OAuth keys, the four R2 values, `NEXT_PUBLIC_APP_URL`, upload limit).
+- **OAuth for production:** callback URLs on the production domain for Google and GitHub. Google does not allow
+  wildcard redirect URIs, so sign-in does not work on deploy previews (documented, not a bug).
+- **R2 CORS:** `docs/r2-cors.json` already allows `https://mdev-reader.netlify.app`.
+- **Migrations:** run `db:migrate` automatically **only for production builds** (a production-context build command).
+  Deploy previews must not migrate, because a preview should never touch the production database. The alternative is
+  running `npm run db:migrate` by hand before each release.
+- **Smoke test after the first deploy:** `npm run r2:check` against production, the guarded routes redirect to sign-in,
+  sign in with each provider, upload one PDF, read it, make one highlight.
+- **README** (replacing the Create Next App boilerplate): what the app is, local setup, scripts, a short architecture
+  summary pointing to `CLAUDE.md`, testing, and the deployment steps above.
+- Needs the owner: setting the variables in the Netlify dashboard and registering the production OAuth callbacks.
+
+### 4. Smaller leftovers
+
+- **Accessibility pass:** focus order, labels, a skip link, and dark-mode contrast (Lighthouse covers part of this).
+- **FSD boundary linting (`steiger`):** was offered in the Phase 0 notes for later and never followed up. Optional; it
+  would need configuring for the root `app/` + `src/pages` layout.
+- **Linking Google and GitHub accounts** while signed in with one (today the second provider shows a "use the provider
+  you signed up with" message). Optional.
+- **Toasts for more actions** (undo for deleting a highlight or bookmark).
+- **Quiet failures in the viewer:** a toast when a page render fails repeatedly, not only the reload logic.
+
+### Open questions for the owner
+
+1. Can you create the **Neon test branch** and the **test R2 bucket**? Without them the upload test cannot run end to end.
+2. **GitHub Actions CI** on pull requests: yes or no? _(Recommended: yes.)_
+3. **Automatic migrations on production deploy**, or run them by hand? _(Recommended: automatic, production only.)_
+4. **Scheduled R2 cleanup** function, or just the manual script? _(Recommended: both, function in dry-run first.)_
+
+---
+
 ## What we can build on
 
 The reader already has most of the plumbing these features need:
@@ -221,7 +302,9 @@ quizzes. Reading aloud with browser voices needs none.
 
 ## Suggested order
 
-1. **Phase 8:** polish and ship (already planned).
+1. **Phase 8:** polish (skeletons, error boundaries, toasts, Lighthouse) is done; the rest of the original Phase 8
+   (orphan cleanup, Playwright E2E, deploy + README) is described in _Deferred from Phase 8_ above and should be
+   finished **before** the AI features, so those are built on a tested, deployed base.
 2. **Phase 9: Listen MVP** (browser voices): quick win, no cost, no new dependency.
 3. **Phase 10: Settings + AI consent + Quiz MVP.**
 4. **Phase 11: Quiz types, grading, review, flashcards.**
