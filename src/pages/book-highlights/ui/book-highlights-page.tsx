@@ -6,6 +6,8 @@ import { getReaderBook } from "@/entities/book/server";
 import { HIGHLIGHT_STYLES, type Highlight } from "@/entities/highlight";
 import { getHighlights } from "@/entities/highlight/server";
 import { requireUser } from "@/shared/auth";
+import { serverNow } from "@/shared/lib/server-time";
+import { RefreshWhenStale } from "@/shared/ui/refresh-when-stale";
 
 import { HighlightsSkeleton } from "./highlights-skeleton";
 
@@ -18,6 +20,7 @@ async function HighlightsContent({
   const user = await requireUser(`/books/${bookId}/highlights`);
   const owned = await getReaderBook(user.id, bookId);
   if (!owned) notFound();
+  const renderedAt = serverNow(); // see RefreshWhenStale
   const { book } = owned;
   const highlights = await getHighlights(user.id, bookId);
 
@@ -30,6 +33,7 @@ async function HighlightsContent({
 
   return (
     <>
+      <RefreshWhenStale renderedAt={renderedAt} />
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <Link

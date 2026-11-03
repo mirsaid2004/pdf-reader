@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { formatDuration } from "@/entities/reading-stats/lib/stats";
 import { getReadingStats } from "@/entities/reading-stats/server";
 import { requireUser } from "@/shared/auth";
+import { serverNow } from "@/shared/lib/server-time";
+import { RefreshWhenStale } from "@/shared/ui/refresh-when-stale";
 import { PagesPerDayChart } from "@/widgets/pages-per-day-chart";
 
 import { StatsSkeleton } from "./stats-skeleton";
@@ -32,6 +34,7 @@ function StatTile({
 
 async function StatsContent() {
   const user = await requireUser("/stats");
+  const renderedAt = serverNow(); // see RefreshWhenStale
   const stats = await getReadingStats(
     user.id,
     (await cookies()).get("tz")?.value,
@@ -41,6 +44,7 @@ async function StatsContent() {
   return (
     <>
       <TimezoneCookie serverTimeZone={stats.timeZone} />
+      <RefreshWhenStale renderedAt={renderedAt} />
       {stats.sessionCount === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-foreground/20 px-6 py-16 text-center">
           <p className="text-lg font-medium">No reading recorded yet</p>

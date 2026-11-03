@@ -94,11 +94,11 @@ export class ReadingTracker {
   }
 
   /**
-   * Sends whatever is new, now. The request starts synchronously (important
+   * Sends whatever is new, now (resolves true if the server accepted something). The request starts synchronously (important
    * while a tab is closing). Reports already in flight aren't sent twice, and
    * failed sends stay pending and are retried by the next flush.
    */
-  async flush(): Promise<void> {
+  async flush(): Promise<boolean> {
     clearTimeout(this.#saveTimer);
 
     const report: ReadingReport = {};
@@ -130,7 +130,7 @@ export class ReadingTracker {
         };
       }
     }
-    if (report.page === undefined && report.session === undefined) return;
+    if (report.page === undefined && report.session === undefined) return false;
 
     if (report.page !== undefined) this.#inflightPage = report.page;
     if (report.session && session) session.inflightSignature = signature;
@@ -154,10 +154,12 @@ export class ReadingTracker {
         session.inflightSignature = null;
       if (accepted) session.sentSignature = signature;
     }
+    return accepted;
   }
 
   /** Final flush and stop all timers (reader closed or hidden). */
-  dispose(): Promise<void> {
+  /** Resolves true if something new was saved. */
+  dispose(): Promise<boolean> {
     const done = this.flush();
     this.#disposed = true;
     this.#stopTimers();

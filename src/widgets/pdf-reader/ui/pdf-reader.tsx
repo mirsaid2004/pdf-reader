@@ -10,8 +10,11 @@ import type { HighlightActions } from "@/features/highlight-text";
 import type { BookmarkActions } from "@/features/toggle-bookmark";
 import { getBookReadUrl } from "@/features/read-book";
 
+import { useStaleOnMount } from "@/shared/lib/use-stale-on-mount";
+
 import { usePdfDocument } from "../model/use-pdf-document";
 import { ReaderErrorBoundary } from "./reader-error-boundary";
+import { ReaderSkeleton } from "./reader-skeleton";
 import { ReaderView } from "./reader-view";
 
 type PdfReaderProps = {
@@ -24,7 +27,12 @@ type PdfReaderProps = {
   highlightActions?: HighlightActions;
   initialUrl: string;
   initialPage: number;
+  /** `Date.now()` on the server when this data was read. */
+  renderedAt: number;
 };
+
+/** Server data older than this when the reader mounts is re-fetched first. */
+const MAX_PAYLOAD_AGE_MS = 15_000;
 
 export function PdfReader({
   book,
@@ -35,6 +43,7 @@ export function PdfReader({
   highlightActions,
   initialUrl,
   initialPage,
+  renderedAt,
 }: PdfReaderProps) {
   const fetchFreshUrl = useCallback(async () => {
     const result = await getBookReadUrl(book.id);
@@ -47,9 +56,15 @@ export function PdfReader({
   });
   // The reader view is rebuilt when the route is hidden and shown again (see
   // usePdfDocument), so remember where the reader was.
-  const [resumePage, setResumePage] = useState(initialPage);
+  // `null` until the reader moves, so the (fresh) server value is used until then.
+  const [resumePage, setResumePage] = useState<number | null>(null);
+  // A page copied from the browser's cache must not decide where the book
+  // opens or which highlights show: re-fetch it, and show the skeleton meanwhile.
+  const stale = useStaleOnMount(renderedAt, MAX_PAYLOAD_AGE_MS);
   // A failed page render usually means the signed URL expired; fetch a new one.
   const onRenderError = useCallback(() => void refreshUrl(), [refreshUrl]);
+
+  if (stale) return <ReaderSkeleton />;
 
   if (state.status === "ready") {
     return (
@@ -63,7 +78,7 @@ export function PdfReader({
           highlightActions={highlightActions}
           doc={state.doc}
           firstPage={state.firstPage}
-          initialPage={resumePage}
+          initialPage={resumePage ?? initialPage}
           onPageChange={setResumePage}
           onRenderError={onRenderError}
         />

@@ -7,7 +7,9 @@ import { countUserBooks, getLibraryBooks } from "@/entities/book/server";
 import { libraryHref } from "@/entities/shelf";
 import { getUserShelves } from "@/entities/shelf/server";
 import { requireUser } from "@/shared/auth";
+import { serverNow } from "@/shared/lib/server-time";
 import { BookGrid } from "@/widgets/book-grid";
+import { RefreshWhenStale } from "@/shared/ui/refresh-when-stale";
 import { LibrarySidebar } from "@/widgets/library-sidebar";
 
 import { LibrarySkeleton } from "./library-skeleton";
@@ -24,6 +26,9 @@ async function LibraryContent({
 }) {
   const params = await searchParams;
   const user = await requireUser("/library");
+  // When this page comes back from the browser's client cache it shows instantly,
+  // then refreshes itself in the background if this timestamp is old.
+  const renderedAt = serverNow();
 
   const q = first(params.q).trim().slice(0, 100);
   const [shelves, totalBooks] = await Promise.all([
@@ -44,6 +49,7 @@ async function LibraryContent({
 
   return (
     <div className="grid gap-8 md:grid-cols-[14rem_1fr]">
+      <RefreshWhenStale renderedAt={renderedAt} />
       <aside>
         <LibrarySidebar
           shelves={shelves}

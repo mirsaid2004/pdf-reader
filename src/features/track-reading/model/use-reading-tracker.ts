@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { sendReadingReport } from "../lib/send-report";
@@ -19,6 +20,7 @@ export function useReadingTracker(params: {
   currentPage: number;
 }) {
   const { bookId, currentPage } = params;
+  const router = useRouter();
   const initialPage = useRef(params.initialPage);
   const tracker = useRef<ReadingTracker | null>(null);
 
@@ -58,10 +60,14 @@ export function useReadingTracker(params: {
       document.removeEventListener("visibilitychange", onHidden);
       window.removeEventListener("pagehide", onPageHide);
       // Also runs when the route is hidden (see usePdfDocument): final flush.
-      void instance.dispose();
+      // After the final save, refresh once: the library and stats are kept in the
+      // browser's cache, and this makes them show what was just read.
+      void instance.dispose().then((saved) => {
+        if (saved) router.refresh();
+      });
       tracker.current = null;
     };
-  }, [bookId]);
+  }, [bookId, router]);
 
   useEffect(() => {
     tracker.current?.pageChanged(currentPage);

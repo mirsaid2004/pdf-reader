@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    // Keep visited dynamic pages (library, stats…) in the browser so returning to
+    // them is instant instead of showing the loading state again.
+    staleTimes: { dynamic: 1800 },
+  },
   images: {
     // OAuth profile pictures
     remotePatterns: [

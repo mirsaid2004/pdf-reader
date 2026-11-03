@@ -8,9 +8,8 @@ import { getBookmarks } from "@/entities/bookmark/server";
 import { getHighlights } from "@/entities/highlight/server";
 import { getSavedPage } from "@/entities/reading-progress/server";
 import { requireUser } from "@/shared/auth";
-import { PdfReader } from "@/widgets/pdf-reader";
-
-import { ReaderSkeleton } from "./reader-skeleton";
+import { serverNow } from "@/shared/lib/server-time";
+import { PdfReader, ReaderSkeleton } from "@/widgets/pdf-reader";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -51,6 +50,10 @@ async function ReaderContent({
     parsePage(query.page, pageCount) ??
     (savedPage ? Math.min(Math.max(savedPage, 1), pageCount) : 1);
 
+  // Lets the client detect a copy from the browser's cache and re-fetch it
+  // (a stale saved page or highlight list must never be the starting point).
+  const renderedAt = serverNow();
+
   return (
     <PdfReader
       book={result.book}
@@ -59,6 +62,7 @@ async function ReaderContent({
       highlights={highlights}
       initialUrl={url}
       initialPage={initialPage}
+      renderedAt={renderedAt}
     />
   );
 }
