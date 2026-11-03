@@ -55,12 +55,13 @@ export function useHighlights(params: {
   bookId: string;
   initial: Highlight[];
   actions?: HighlightActions;
+  /** Called with a user-facing message when a save fails (after rolling back). */
+  onError?: (message: string) => void;
 }) {
-  const { bookId, initial, actions = serverActions } = params;
+  const { bookId, initial, actions = serverActions, onError } = params;
   const [items, setItems] = useState<Highlight[]>(() =>
     initial.toSorted(readingOrder),
   );
-  const [error, setError] = useState<string | null>(null);
   const tempCounter = useRef(0);
 
   /** Highlights grouped by page. A page's array keeps its identity until it changes. */
@@ -85,7 +86,6 @@ export function useHighlights(params: {
       color: HighlightColor,
       note?: string,
     ): Promise<Highlight[] | null> => {
-      setError(null);
       const now = new Date();
       const temps: Highlight[] = parts.map((part, index) => ({
         id: `temp-${++tempCounter.current}`,
@@ -102,7 +102,7 @@ export function useHighlights(params: {
 
       const result = await actions.create({ bookId, color, note, parts });
       if (!result.ok) {
-        setError(result.error);
+        onError?.(result.error);
         setItems((prev) => prev.filter((item) => !tempIds.has(item.id)));
         return null;
       }
@@ -114,7 +114,7 @@ export function useHighlights(params: {
       );
       return result.data.highlights;
     },
-    [actions, bookId],
+    [actions, bookId, onError],
   );
 
   const update = useCallback(
@@ -124,7 +124,6 @@ export function useHighlights(params: {
     ) => {
       const previous = items.find((item) => item.id === id);
       if (!previous || id.startsWith("temp-")) return;
-      setError(null);
       const nextNote =
         patch.note === undefined
           ? undefined
@@ -145,29 +144,28 @@ export function useHighlights(params: {
 
       const result = await actions.update({ id, ...patch });
       if (!result.ok) {
-        setError(result.error);
+        onError?.(result.error);
         setItems((prev) =>
           prev.map((item) => (item.id === id ? previous : item)),
         );
       }
     },
-    [actions, items],
+    [actions, items, onError],
   );
 
   const remove = useCallback(
     async (id: string) => {
       const previous = items.find((item) => item.id === id);
       if (!previous || id.startsWith("temp-")) return;
-      setError(null);
       setItems((prev) => prev.filter((item) => item.id !== id));
 
       const result = await actions.remove(id);
       if (!result.ok) {
-        setError(result.error);
+        onError?.(result.error);
         setItems((prev) => [...prev, previous].toSorted(readingOrder));
       }
     },
-    [actions, items],
+    [actions, items, onError],
   );
 
   return {
@@ -176,8 +174,6 @@ export function useHighlights(params: {
     create,
     update,
     remove,
-    error,
-    dismissError: () => setError(null),
   };
 }
 

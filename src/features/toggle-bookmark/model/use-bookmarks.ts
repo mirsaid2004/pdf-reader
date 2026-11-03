@@ -37,12 +37,13 @@ export function useBookmarks(params: {
   bookId: string;
   initial: Bookmark[];
   actions?: BookmarkActions;
+  /** Called with a user-facing message when a save fails (after rolling back). */
+  onError?: (message: string) => void;
 }) {
-  const { bookId, initial, actions = serverActions } = params;
+  const { bookId, initial, actions = serverActions, onError } = params;
   const [items, setItems] = useState<Bookmark[]>(() =>
     initial.toSorted(byPage),
   );
-  const [error, setError] = useState<string | null>(null);
   const pendingPages = useRef(new Set<number>());
 
   const pages = useMemo(() => new Set(items.map((item) => item.page)), [items]);
@@ -52,7 +53,6 @@ export function useBookmarks(params: {
     async (page: number) => {
       if (pendingPages.current.has(page)) return; // ignore double presses while saving
       pendingPages.current.add(page);
-      setError(null);
 
       const existing = items.find((item) => item.page === page);
       const temp: Bookmark = {
@@ -71,7 +71,7 @@ export function useBookmarks(params: {
       pendingPages.current.delete(page);
 
       if (!result.ok) {
-        setError(result.error);
+        onError?.(result.error);
         setItems((prev) =>
           existing
             ? [...prev.filter((item) => item.page !== page), existing].toSorted(
@@ -87,7 +87,7 @@ export function useBookmarks(params: {
         return (saved ? [...without, saved] : without).toSorted(byPage);
       });
     },
-    [actions, bookId, items],
+    [actions, bookId, items, onError],
   );
 
   const setLabel = useCallback(
@@ -95,14 +95,13 @@ export function useBookmarks(params: {
       const previous = items.find((item) => item.id === id)?.label ?? null;
       const next = label.trim() === "" ? null : label.trim();
       if (next === previous || id.startsWith("temp-")) return;
-      setError(null);
       setItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, label: next } : item)),
       );
 
       const result = await actions.setLabel({ id, label });
       if (!result.ok) {
-        setError(result.error);
+        onError?.(result.error);
         setItems((prev) =>
           prev.map((item) =>
             item.id === id ? { ...item, label: previous } : item,
@@ -110,23 +109,22 @@ export function useBookmarks(params: {
         );
       }
     },
-    [actions, items],
+    [actions, items, onError],
   );
 
   const remove = useCallback(
     async (id: string) => {
       const existing = items.find((item) => item.id === id);
       if (!existing || id.startsWith("temp-")) return;
-      setError(null);
       setItems((prev) => prev.filter((item) => item.id !== id));
 
       const result = await actions.remove(id);
       if (!result.ok) {
-        setError(result.error);
+        onError?.(result.error);
         setItems((prev) => [...prev, existing].toSorted(byPage));
       }
     },
-    [actions, items],
+    [actions, items, onError],
   );
 
   return {
@@ -135,8 +133,6 @@ export function useBookmarks(params: {
     toggleAt,
     setLabel,
     remove,
-    error,
-    dismissError: () => setError(null),
   };
 }
 

@@ -15,18 +15,10 @@ export function BookmarksPanel({
   currentPage,
   onGoToPage,
 }: BookmarksPanelProps) {
-  const { items, error } = bookmarks;
+  const { items } = bookmarks;
 
   return (
     <div className="flex flex-col">
-      {error && (
-        <p
-          role="alert"
-          className="m-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-700 dark:text-red-300"
-        >
-          {error}
-        </p>
-      )}
       {items.length === 0 ? (
         <p className="p-4 text-sm text-foreground/60">
           No bookmarks yet. Press{" "}

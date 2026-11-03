@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 
+import { useToast } from "@/shared/ui/toast";
+
 import { deleteBook } from "../api/actions";
 
 export function DeleteBookButton({
@@ -12,7 +14,7 @@ export function DeleteBookButton({
   title: string;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const [pending, startTransition] = useTransition();
 
   if (!confirming) {
@@ -37,7 +39,18 @@ export function DeleteBookButton({
         onClick={() =>
           startTransition(async () => {
             const result = await deleteBook(bookId);
-            if (!result.ok) setError(result.error);
+            if (result.ok)
+              toast({
+                kind: "success",
+                title: "Book deleted",
+                description: title,
+              });
+            else
+              toast({
+                kind: "error",
+                title: "Couldn’t delete the book",
+                description: result.error,
+              });
           })
         }
         className="rounded bg-red-600 px-2 py-0.5 font-medium text-white disabled:opacity-50"
@@ -49,17 +62,11 @@ export function DeleteBookButton({
         disabled={pending}
         onClick={() => {
           setConfirming(false);
-          setError(null);
         }}
         className="text-foreground/60 hover:underline"
       >
         Cancel
       </button>
-      {error && (
-        <span role="alert" className="text-red-600">
-          {error}
-        </span>
-      )}
     </span>
   );
 }

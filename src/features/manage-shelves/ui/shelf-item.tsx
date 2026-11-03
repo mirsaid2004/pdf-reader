@@ -7,6 +7,8 @@ import { useState, useTransition } from "react";
 import { libraryHref, type Shelf } from "@/entities/shelf";
 import { DropdownMenu } from "@/shared/ui/dropdown-menu";
 
+import { useToast } from "@/shared/ui/toast";
+
 import { deleteShelf, renameShelf } from "../api/actions";
 
 type Mode = "view" | "rename" | "confirm-delete";
@@ -22,6 +24,7 @@ export function ShelfItem({ shelf, active, q }: ShelfItemProps) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("view");
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const [pending, startTransition] = useTransition();
 
   const backToView = () => {
@@ -92,7 +95,19 @@ export function ShelfItem({ shelf, active, q }: ShelfItemProps) {
             onClick={() =>
               startTransition(async () => {
                 const result = await deleteShelf(shelf.id);
-                if (!result.ok) return setError(result.error);
+                if (!result.ok) {
+                  toast({
+                    kind: "error",
+                    title: "Couldn’t delete the shelf",
+                    description: result.error,
+                  });
+                  return;
+                }
+                toast({
+                  kind: "success",
+                  title: "Shelf deleted",
+                  description: shelf.name,
+                });
                 if (active) router.replace(libraryHref({ q }));
                 backToView();
               })
@@ -109,11 +124,6 @@ export function ShelfItem({ shelf, active, q }: ShelfItemProps) {
             Cancel
           </button>
         </div>
-        {error && (
-          <p role="alert" className="text-red-600 dark:text-red-400">
-            {error}
-          </p>
-        )}
       </div>
     );
   }

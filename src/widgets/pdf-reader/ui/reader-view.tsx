@@ -26,6 +26,7 @@ import { useBookmarks, type BookmarkActions } from "@/features/toggle-bookmark";
 import { useReadingTracker } from "@/features/track-reading";
 import type { HighlightColor } from "@/shared/lib/highlight-colors";
 import { useStoredState } from "@/shared/lib/use-stored-state";
+import { useToast } from "@/shared/ui/toast";
 
 import { isReaderTheme, THEME_STYLES, type ReaderTheme } from "../model/themes";
 import { useElementSize } from "../model/use-element-size";
@@ -192,15 +193,27 @@ export function ReaderView({
   });
 
   // ── bookmarks, highlights, selection ──
+  const { toast } = useToast();
+  const reportSaveError = useCallback(
+    (message: string) =>
+      toast({
+        kind: "error",
+        title: "Couldn’t save your change",
+        description: message,
+      }),
+    [toast],
+  );
   const bookmarks = useBookmarks({
     bookId: book.id,
     initial: initialBookmarks,
     actions: bookmarkActions,
+    onError: reportSaveError,
   });
   const highlights = useHighlights({
     bookId: book.id,
     initial: initialHighlights,
     actions: highlightActions,
+    onError: reportSaveError,
   });
   const { selection, clear: clearSelection } = useTextSelection(scroller);
   const [popover, setPopover] = useState<{

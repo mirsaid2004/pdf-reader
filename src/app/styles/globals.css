@@ -6,6 +6,7 @@
 }
 
 @theme inline {
+  --animate-toast-in: toast-in 0.2s ease-out;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -43,5 +44,16 @@ body {
     --viz-text-primary: #f0efec;
     --viz-text-secondary: #c3c2b7;
     --viz-series-1: #3987e5;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

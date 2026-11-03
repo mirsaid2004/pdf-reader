@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 
 import type { Shelf } from "@/entities/shelf";
 
+import { useToast } from "@/shared/ui/toast";
+
 import { setBookShelf } from "../api/actions";
 
 type Props = {
@@ -18,15 +20,19 @@ export function BookShelvesChecklist({
   initialShelfIds,
 }: Props) {
   const [selected, setSelected] = useState(() => new Set(initialShelfIds));
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   const [pending, startTransition] = useTransition();
 
   const toggle = (shelfId: string, on: boolean) => {
-    setError(null);
     startTransition(async () => {
       const result = await setBookShelf({ bookId, shelfId, on });
       if (result.ok) setSelected(new Set(result.data.shelfIds));
-      else setError(result.error);
+      else
+        toast({
+          kind: "error",
+          title: "Couldn’t update shelves",
+          description: result.error,
+        });
     });
   };
 
@@ -48,14 +54,6 @@ export function BookShelvesChecklist({
           <span className="truncate">{shelf.name}</span>
         </label>
       ))}
-      {error && (
-        <p
-          role="alert"
-          className="px-3 pt-1 text-xs text-red-600 dark:text-red-400"
-        >
-          {error}
-        </p>
-      )}
     </fieldset>
   );
 }

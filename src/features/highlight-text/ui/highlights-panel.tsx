@@ -24,7 +24,7 @@ export function HighlightsPanel({
   currentPage,
   onGoToPage,
 }: HighlightsPanelProps) {
-  const { items, error } = highlights;
+  const { items } = highlights;
 
   const groups: { page: number; items: Highlight[] }[] = [];
   for (const item of items) {
@@ -50,15 +50,6 @@ export function HighlightsPanel({
           Export Markdown
         </a>
       </div>
-
-      {error && (
-        <p
-          role="alert"
-          className="m-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-xs text-red-700 dark:text-red-300"
-        >
-          {error}
-        </p>
-      )}
 
       {groups.length === 0 ? (
         <p className="p-4 text-sm text-foreground/60">
