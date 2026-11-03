@@ -10,6 +10,8 @@ import { requireUser } from "@/shared/auth";
 import { BookGrid } from "@/widgets/book-grid";
 import { LibrarySidebar } from "@/widgets/library-sidebar";
 
+import { LibrarySkeleton } from "./library-skeleton";
+
 type SearchParams = Record<string, string | string[] | undefined>;
 
 const first = (value: string | string[] | undefined) =>
@@ -115,11 +117,7 @@ export function LibraryPage({
         <h1 className="text-3xl font-semibold tracking-tight">Your library</h1>
         <UploadBookButton />
       </div>
-      <Suspense
-        fallback={
-          <div className="h-64 animate-pulse rounded-lg bg-foreground/5" />
-        }
-      >
+      <Suspense fallback={<LibrarySkeleton />}>
         <LibraryContent searchParams={searchParams} />
       </Suspense>
     </main>

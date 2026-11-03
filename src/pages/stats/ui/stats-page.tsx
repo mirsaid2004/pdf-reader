@@ -7,6 +7,7 @@ import { getReadingStats } from "@/entities/reading-stats/server";
 import { requireUser } from "@/shared/auth";
 import { PagesPerDayChart } from "@/widgets/pages-per-day-chart";
 
+import { StatsSkeleton } from "./stats-skeleton";
 import { TimezoneCookie } from "./timezone-cookie";
 
 function StatTile({
@@ -90,11 +91,7 @@ export function StatsPage() {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 py-8">
       <h1 className="text-3xl font-semibold tracking-tight">Reading stats</h1>
-      <Suspense
-        fallback={
-          <div className="h-64 animate-pulse rounded-2xl bg-foreground/5" />
-        }
-      >
+      <Suspense fallback={<StatsSkeleton />}>
         <StatsContent />
       </Suspense>
     </main>

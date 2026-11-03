@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { getSignInErrorMessage, SignInButtons } from "@/features/auth/sign-in";
 import { getCurrentUser, sanitizeCallbackUrl } from "@/shared/auth";
+import { LoadingRegion, Skeleton } from "@/shared/ui/skeleton";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -49,7 +50,13 @@ export function SignInPage({
         </div>
         <Suspense
           fallback={
-            <div className="h-[6.5rem] animate-pulse rounded-lg bg-foreground/5" />
+            <LoadingRegion
+              label="Loading sign-in options"
+              className="flex flex-col gap-3"
+            >
+              <Skeleton className="h-11 w-full rounded-lg" />
+              <Skeleton className="h-11 w-full rounded-lg" />
+            </LoadingRegion>
           }
         >
           <SignInPanel searchParams={searchParams} />

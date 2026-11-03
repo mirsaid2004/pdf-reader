@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { FadeInImage } from "@/shared/ui/fade-in-image";
 
 type BookCoverProps = {
   bookId: string;
@@ -31,7 +31,7 @@ export function BookCover({
     <div className={base}>
       {/* `unoptimized`: the cover route redirects to a short-lived presigned R2
           URL and needs the user's cookies, which the image optimizer lacks. */}
-      <Image
+      <FadeInImage
         src={bookCoverUrl(bookId)}
         alt={`Cover of ${title}`}
         fill

@@ -7,6 +7,8 @@ import { HIGHLIGHT_STYLES, type Highlight } from "@/entities/highlight";
 import { getHighlights } from "@/entities/highlight/server";
 import { requireUser } from "@/shared/auth";
 
+import { HighlightsSkeleton } from "./highlights-skeleton";
+
 async function HighlightsContent({
   params,
 }: {
@@ -118,11 +120,7 @@ export function BookHighlightsPage({
 }) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4 py-8">
-      <Suspense
-        fallback={
-          <div className="h-64 animate-pulse rounded-2xl bg-foreground/5" />
-        }
-      >
+      <Suspense fallback={<HighlightsSkeleton />}>
         <HighlightsContent params={params} />
       </Suspense>
     </main>

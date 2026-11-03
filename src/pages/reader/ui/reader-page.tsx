@@ -10,6 +10,8 @@ import { getSavedPage } from "@/entities/reading-progress/server";
 import { requireUser } from "@/shared/auth";
 import { PdfReader } from "@/widgets/pdf-reader";
 
+import { ReaderSkeleton } from "./reader-skeleton";
+
 type SearchParams = Record<string, string | string[] | undefined>;
 
 /** An explicit, valid ?page=N, or null. */
@@ -66,13 +68,7 @@ export function ReaderPage(props: {
   searchParams: Promise<SearchParams>;
 }) {
   return (
-    <Suspense
-      fallback={
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-          <span className="size-6 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
-        </div>
-      }
-    >
+    <Suspense fallback={<ReaderSkeleton />}>
       <ReaderContent {...props} />
     </Suspense>
   );
