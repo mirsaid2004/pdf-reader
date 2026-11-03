@@ -66,10 +66,11 @@ bookmark.
 - **OAuth for production:** callback URLs on the production domain for Google and GitHub. Google does not allow
   wildcard redirect URIs, so sign-in does not work on deploy previews (documented, not a bug).
 - **R2 CORS:** `docs/r2-cors.json` already allows `https://mdev-reader.netlify.app`.
-- **Secrets scan false positive (hit on the first deploy):** Netlify fails the build if any env var _value_ appears in
-  the build output. The bucket name `mdev-reader` is a substring of the public site URL that Next inlines, so it is
-  reported. Fixed in `netlify.toml` with `SECRETS_SCAN_OMIT_KEYS = "R2_BUCKET_NAME"` (only that key). If another
-  variable's value ever collides with public text, prefer omitting that one key over disabling the scan.
+- **Secrets scan false positives (hit on the first deploys):** Netlify fails the build if any env var _value_ appears
+  in the build output. Two public values do: `NEXT_PUBLIC_APP_URL` (public by design, embedded in browser JS) and
+  `R2_BUCKET_NAME` (a substring of that public URL). Both are skipped in `netlify.toml` via `SECRETS_SCAN_OMIT_KEYS`
+  (also `NEXT_PUBLIC_MAX_UPLOAD_MB`). The scan stays on for real secrets. If the same variable is also set in the Netlify
+  UI, keep the two lists identical. A trailing slash in `NEXT_PUBLIC_APP_URL` hid the match once; it is not a fix.
 - **Migrations:** run `db:migrate` automatically **only for production builds** (a production-context build command).
   Deploy previews must not migrate, because a preview should never touch the production database. The alternative is
   running `npm run db:migrate` by hand before each release.
