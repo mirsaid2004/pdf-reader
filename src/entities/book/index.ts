@@ -6,6 +6,6 @@ export {
   MAX_OUTLINE_ITEMS,
   outlineSchema,
 } from "./model/schemas";
-export type { Book, LibraryBook, OutlineItem } from "./model/types";
+export type { Book, LibraryBook, OutlineItem, ReaderBook } from "./model/types";
 export { BookCard } from "./ui/book-card";
 export { BookCover, bookCoverUrl } from "./ui/book-cover";

@@ -75,6 +75,14 @@ There is no test runner yet; Playwright E2E arrives in Phase 8.
 - `BookCard` (entities) is display-only and receives actions via a `menu` slot, because FSD forbids entities importing features. `shared/ui/dropdown-menu.tsx` is the shared click-to-open menu.
 - `reading_progress` exists but is only read (left join) until Phase 5 starts writing it.
 
+### Reader (`src/widgets/pdf-reader`, route `app/read/[bookId]`)
+
+- Server page (`pages/reader`): `requireUser` → `getReaderBook` (ownership; unknown/foreign ⇒ `notFound()`) → presigned GET (1 h, `features/read-book`) → client `<PdfReader>`. The client refreshes the URL every 45 min and on render errors via the `getBookReadUrl` action.
+- pdf.js loads by URL with range requests (`disableAutoFetch: true`), so big books open fast. `ReaderView` is `fixed inset-0 z-50` to cover the global header and to be the Fullscreen API target.
+- **Virtualization** (`use-virtual-pages.ts`): page sizes start as page 1's size and are corrected as pages report real sizes (`reportSize`); an _anchor_ (page + fraction) is restored in a layout effect after every layout change (size corrections, zoom, resize), so the view never jumps. Only pages within ~1.5 viewports are mounted. The scroller `el` is mutated via a ref (the React-compiler lint rejects mutating state-derived values).
+- **`PageView`**: renders canvas and text layer off-screen then swaps them in (no flicker on zoom; old canvas is CSS-stretched meanwhile). Canvas area is capped (16 MP) and output scale ≤ 2. The text layer sizes itself from the `--total-scale-factor` CSS var on `.pdf-page`; styles are the minimal subset in `ui/text-layer.css` (not the 6,500-line `pdf_viewer.css`). Themes apply a CSS `filter` to the canvas host only, never the text layer.
+- `?page=N` is kept in the URL via `history.replaceState` (DB persistence is Phase 5). Theme/zoom live in localStorage through `useStoredState`. Known limitation: the dark theme inverts images too.
+
 ### Server actions
 
 - Return `ActionResult<T>` (`shared/lib/action-result.ts`) instead of throwing: thrown errors are redacted in production. Validate input with zod (`unknown` in, `safeParse`). Use `getCurrentUser()` (not `requireUser()`, which redirects). Call `refresh()` from `next/cache` after mutations that change the current page.

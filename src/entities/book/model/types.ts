@@ -21,3 +21,12 @@ export type LibraryBook = Book & {
   /** Ids of the shelves this book is on. */
   shelfIds: string[];
 };
+
+/** What the reader needs to know about a book (no storage keys). */
+export type ReaderBook = {
+  id: string;
+  title: string;
+  author: string | null;
+  pageCount: number;
+  hasTextLayer: boolean;
+};
