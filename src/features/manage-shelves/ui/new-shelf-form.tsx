@@ -1,14 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-
-import { libraryHref } from "@/entities/shelf";
 
 import { createShelf } from "../api/actions";
 
-export function NewShelfForm() {
-  const router = useRouter();
+export function NewShelfForm({
+  onCreated,
+}: {
+  onCreated: (shelfId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -38,7 +38,7 @@ export function NewShelfForm() {
           if (!result.ok) return setError(result.error);
           setOpen(false);
           setError(null);
-          router.push(libraryHref({ shelf: result.data.id }));
+          onCreated(result.data.id);
         });
       }}
     >

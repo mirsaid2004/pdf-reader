@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PDF Reader",
-    template: "%s · PDF Reader",
+    default: "MDEV-Reader",
+    template: "%s · MDEV-Reader",
   },
   description: "Upload, read, and annotate your PDF books.",
 };

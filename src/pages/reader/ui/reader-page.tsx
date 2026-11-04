@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { createReadUrl } from "@/features/read-book/server";
+import { bookIdSchema } from "@/entities/book";
 import { getReaderBook } from "@/entities/book/server";
 import { getBookmarks } from "@/entities/bookmark/server";
 import { getHighlights } from "@/entities/highlight/server";
@@ -34,15 +35,21 @@ async function ReaderContent({
   const [{ bookId }, query] = await Promise.all([params, searchParams]);
   const user = await requireUser(`/read/${bookId}`);
 
-  const result = await getReaderBook(user.id, bookId);
-  if (!result) notFound();
+  // Malformed ids would make Postgres reject the uuid, so 404 before querying.
+  if (!bookIdSchema.safeParse(bookId).success) notFound();
 
-  const [url, savedPage, bookmarks, highlights] = await Promise.all([
-    createReadUrl(result.fileKey),
+  // One wall-clock round trip: these queries are independent, and each is
+  // scoped to `user.id`, so they can run alongside the ownership check. If the
+  // book isn't the user's we 404 and discard whatever came back.
+  const [result, savedPage, bookmarks, highlights] = await Promise.all([
+    getReaderBook(user.id, bookId),
     getSavedPage(user.id, bookId),
     getBookmarks(user.id, bookId),
     getHighlights(user.id, bookId),
   ]);
+  if (!result) notFound();
+  // Presigning is local crypto (no network).
+  const url = await createReadUrl(result.fileKey);
 
   // Resume order: an explicit ?page=N, then the saved page, then page 1.
   const { pageCount } = result.book;

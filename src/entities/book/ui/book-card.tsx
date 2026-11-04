@@ -16,7 +16,6 @@ export function BookCard({
     <article className="group relative flex flex-col gap-2">
       <Link
         href={`/read/${book.id}`}
-        prefetch={false}
         className="flex flex-col gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         <BookCover

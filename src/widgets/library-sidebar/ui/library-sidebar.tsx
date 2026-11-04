@@ -9,6 +9,7 @@ type Props = {
   /** Currently selected shelf id, or null for "All books". */
   activeShelfId: string | null;
   q: string;
+  onSelectShelf: (shelfId: string | null) => void;
 };
 
 export function LibrarySidebar({
@@ -16,6 +17,7 @@ export function LibrarySidebar({
   totalBooks,
   activeShelfId,
   q,
+  onSelectShelf,
 }: Props) {
   const allActive = activeShelfId === null;
   return (
@@ -23,6 +25,12 @@ export function LibrarySidebar({
       <Link
         href={libraryHref({ q })}
         aria-current={allActive ? "page" : undefined}
+        onClick={(event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button)
+            return;
+          event.preventDefault();
+          onSelectShelf(null);
+        }}
         className={`flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm ${
           allActive ? "bg-foreground/10 font-medium" : "hover:bg-foreground/5"
         }`}
@@ -36,9 +44,10 @@ export function LibrarySidebar({
           shelf={shelf}
           active={shelf.id === activeShelfId}
           q={q}
+          onSelect={onSelectShelf}
         />
       ))}
-      <NewShelfForm />
+      <NewShelfForm onCreated={onSelectShelf} />
     </nav>
   );
 }

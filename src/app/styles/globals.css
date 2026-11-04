@@ -3,12 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --accent: #6366f1;
+  --accent-2: #8b5cf6;
 }
 
 @theme inline {
   --animate-toast-in: toast-in 0.2s ease-out;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -17,6 +21,8 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --accent: #818cf8;
+    --accent-2: #a78bfa;
   }
 }
 

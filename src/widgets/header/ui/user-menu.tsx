@@ -22,7 +22,13 @@ export async function UserMenu() {
   }
 
   return (
-    <>
+    <div className="flex items-center gap-3">
+      <Link
+        href="/library"
+        className="rounded-lg border border-foreground/15 px-3 py-1.5 text-sm font-medium hover:bg-foreground/5"
+      >
+        Library
+      </Link>
       <button
         type="button"
         popoverTarget={MENU_ID}
@@ -59,6 +65,6 @@ export async function UserMenu() {
         </Link>
         <SignOutButton className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-foreground/5" />
       </div>
-    </>
+    </div>
   );
 }
