@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, exists, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { getDb } from "@/shared/db";
 import {
@@ -12,89 +12,52 @@ import {
 
 import type { LibraryBook } from "../model/types";
 
-/** Escapes LIKE wildcards so user input is matched literally. */
-const escapeLike = (value: string) =>
-  value.replace(/[\\%_]/g, (char) => `\\${char}`);
-
-export async function countUserBooks(userId: string): Promise<number> {
-  const [row] = await getDb()
-    .select({ count: sql<number>`count(*)::int` })
-    .from(books)
-    .where(eq(books.userId, userId));
-  return row?.count ?? 0;
-}
-
 /**
- * The library view: the user's books, optionally limited to one shelf and/or
- * matching a title/author search (case-insensitive substring).
- * `shelfId` must already be verified as belonging to `userId`.
+ * The user's whole library in ONE database round trip (`db.batch` sends both
+ * queries in a single HTTP request; each Neon round trip costs ~100+ ms).
+ *
+ * Shelf and search filtering happen in the browser over this list, so switching
+ * shelves needs no server request at all.
  */
-export async function getLibraryBooks(params: {
-  userId: string;
-  shelfId: string | null;
-  q: string;
-}): Promise<LibraryBook[]> {
-  const { userId, shelfId, q } = params;
+export async function getLibraryBooks(userId: string): Promise<LibraryBook[]> {
   const db = getDb();
 
-  const pattern = q ? `%${escapeLike(q)}%` : null;
-  const rows = await db
-    .select({
-      id: books.id,
-      title: books.title,
-      author: books.author,
-      pageCount: books.pageCount,
-      fileSize: books.fileSize,
-      hasTextLayer: books.hasTextLayer,
-      coverKey: books.coverKey,
-      createdAt: books.createdAt,
-      percent: readingProgress.percent,
-    })
-    .from(books)
-    .leftJoin(
-      readingProgress,
-      and(
-        eq(readingProgress.bookId, books.id),
-        eq(readingProgress.userId, userId),
-      ),
-    )
-    .where(
-      and(
-        eq(books.userId, userId),
-        pattern
-          ? or(ilike(books.title, pattern), ilike(books.author, pattern))
-          : undefined,
-        shelfId
-          ? exists(
-              db
-                .select({ one: sql`1` })
-                .from(shelfBooks)
-                .where(
-                  and(
-                    eq(shelfBooks.bookId, books.id),
-                    eq(shelfBooks.shelfId, shelfId),
-                  ),
-                ),
-            )
-          : undefined,
-      ),
-    )
-    .orderBy(desc(books.createdAt));
-
-  if (rows.length === 0) return [];
-
-  // Which shelves each book is on (for the per-book "Shelves" menu).
-  const memberships = await db
-    .select({ bookId: shelfBooks.bookId, shelfId: shelfBooks.shelfId })
-    .from(shelfBooks)
-    .innerJoin(shelves, eq(shelves.id, shelfBooks.shelfId))
-    .where(eq(shelves.userId, userId));
+  const [rows, memberships] = await db.batch([
+    db
+      .select({
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        pageCount: books.pageCount,
+        fileSize: books.fileSize,
+        hasTextLayer: books.hasTextLayer,
+        coverKey: books.coverKey,
+        createdAt: books.createdAt,
+        percent: readingProgress.percent,
+      })
+      .from(books)
+      .leftJoin(
+        readingProgress,
+        and(
+          eq(readingProgress.bookId, books.id),
+          eq(readingProgress.userId, userId),
+        ),
+      )
+      .where(eq(books.userId, userId))
+      .orderBy(desc(books.createdAt)),
+    // Which shelves each book is on.
+    db
+      .select({ bookId: shelfBooks.bookId, shelfId: shelfBooks.shelfId })
+      .from(shelfBooks)
+      .innerJoin(shelves, eq(shelves.id, shelfBooks.shelfId))
+      .where(eq(shelves.userId, userId)),
+  ]);
 
   const shelvesByBook = new Map<string, string[]>();
-  for (const { bookId, shelfId: id } of memberships) {
+  for (const { bookId, shelfId } of memberships) {
     const list = shelvesByBook.get(bookId);
-    if (list) list.push(id);
-    else shelvesByBook.set(bookId, [id]);
+    if (list) list.push(shelfId);
+    else shelvesByBook.set(bookId, [shelfId]);
   }
 
   return rows.map(({ coverKey, percent, ...book }) => ({

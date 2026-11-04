@@ -1,16 +1,12 @@
-import Link from "next/link";
 import { Suspense } from "react";
 
-import { SearchBooks } from "@/features/search-books";
 import { UploadBookButton } from "@/features/upload-book";
-import { countUserBooks, getLibraryBooks } from "@/entities/book/server";
-import { libraryHref } from "@/entities/shelf";
+import { getLibraryBooks } from "@/entities/book/server";
 import { getUserShelves } from "@/entities/shelf/server";
 import { requireUser } from "@/shared/auth";
 import { serverNow } from "@/shared/lib/server-time";
-import { BookGrid } from "@/widgets/book-grid";
 import { RefreshWhenStale } from "@/shared/ui/refresh-when-stale";
-import { LibrarySidebar } from "@/widgets/library-sidebar";
+import { LibraryView } from "@/widgets/library-view";
 
 import { LibrarySkeleton } from "./library-skeleton";
 
@@ -30,85 +26,27 @@ async function LibraryContent({
   // then refreshes itself in the background if this timestamp is old.
   const renderedAt = serverNow();
 
-  const q = first(params.q).trim().slice(0, 100);
-  const [shelves, totalBooks] = await Promise.all([
+  // Two independent queries, one wall-clock round trip. Everything else
+  // (shelf switching, search) happens in the browser over this data.
+  const [shelves, books] = await Promise.all([
     getUserShelves(user.id),
-    countUserBooks(user.id),
+    getLibraryBooks(user.id),
   ]);
 
   // Only accept shelf ids that belong to this user; anything else means "all".
-  const activeShelf =
+  const initialShelf =
     shelves.find((shelf) => shelf.id === first(params.shelf)) ?? null;
-  const books = await getLibraryBooks({
-    userId: user.id,
-    shelfId: activeShelf?.id ?? null,
-    q,
-  });
-
-  const filtered = Boolean(activeShelf) || q !== "";
 
   return (
-    <div className="grid gap-8 md:grid-cols-[14rem_1fr]">
+    <>
       <RefreshWhenStale renderedAt={renderedAt} />
-      <aside>
-        <LibrarySidebar
-          shelves={shelves}
-          totalBooks={totalBooks}
-          activeShelfId={activeShelf?.id ?? null}
-          q={q}
-        />
-      </aside>
-
-      <section className="flex min-w-0 flex-col gap-6" aria-label="Books">
-        {totalBooks > 0 && (
-          <div className="flex items-center justify-between gap-4">
-            <SearchBooks initialQuery={q} shelfId={activeShelf?.id ?? null} />
-            <p
-              className="shrink-0 text-sm text-foreground/60"
-              aria-live="polite"
-            >
-              {books.length} {books.length === 1 ? "book" : "books"}
-            </p>
-          </div>
-        )}
-
-        {totalBooks === 0 ? (
-          <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-foreground/20 px-6 py-16 text-center">
-            <p className="text-lg font-medium">Your library is empty</p>
-            <p className="max-w-sm text-sm text-foreground/60">
-              Upload a PDF to start reading. Your progress, bookmarks, and
-              highlights sync across devices.
-            </p>
-            <UploadBookButton label="Upload your first book" />
-          </div>
-        ) : books.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-foreground/20 px-6 py-16 text-center">
-            {q ? (
-              <p className="font-medium">
-                No books match “{q}”{activeShelf && ` on ${activeShelf.name}`}.
-              </p>
-            ) : (
-              <>
-                <p className="font-medium">“{activeShelf?.name}” is empty.</p>
-                <p className="max-w-sm text-sm text-foreground/60">
-                  Open a book’s ⋯ menu and tick this shelf to add it.
-                </p>
-              </>
-            )}
-            {filtered && (
-              <Link
-                href={libraryHref({})}
-                className="text-sm underline underline-offset-4"
-              >
-                Clear filters
-              </Link>
-            )}
-          </div>
-        ) : (
-          <BookGrid books={books} shelves={shelves} />
-        )}
-      </section>
-    </div>
+      <LibraryView
+        books={books}
+        shelves={shelves}
+        initialShelfId={initialShelf?.id ?? null}
+        initialQuery={first(params.q).trim().slice(0, 100)}
+      />
+    </>
   );
 }
 

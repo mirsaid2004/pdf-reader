@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { libraryHref, type Shelf } from "@/entities/shelf";
@@ -17,11 +16,12 @@ type ShelfItemProps = {
   shelf: Shelf;
   active: boolean;
   q: string;
+  /** Switch the library view to this shelf (null = all books), client-side. */
+  onSelect: (shelfId: string | null) => void;
 };
 
 /** One sidebar row: link + count, with rename (all shelves) and delete (custom only). */
-export function ShelfItem({ shelf, active, q }: ShelfItemProps) {
-  const router = useRouter();
+export function ShelfItem({ shelf, active, q, onSelect }: ShelfItemProps) {
   const [mode, setMode] = useState<Mode>("view");
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -108,7 +108,7 @@ export function ShelfItem({ shelf, active, q }: ShelfItemProps) {
                   title: "Shelf deleted",
                   description: shelf.name,
                 });
-                if (active) router.replace(libraryHref({ q }));
+                if (active) onSelect(null);
                 backToView();
               })
             }
@@ -135,6 +135,13 @@ export function ShelfItem({ shelf, active, q }: ShelfItemProps) {
       <Link
         href={libraryHref({ shelf: shelf.id, q })}
         aria-current={active ? "page" : undefined}
+        onClick={(event) => {
+          // Plain click: switch in memory. Modified clicks keep the real link.
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.button)
+            return;
+          event.preventDefault();
+          onSelect(shelf.id);
+        }}
         className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-1.5 text-sm"
       >
         <span className="truncate">{shelf.name}</span>
